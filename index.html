@@ -471,6 +471,7 @@
       <button class="btn" id="mmAch">守岛录总览</button>
       <button class="btn" id="mmHelp">玩法说明</button>
       <button class="btn" id="mmOpts">设定</button>
+      <button class="btn" id="mmAbout">关于</button>
     </div>
     <div class="mmKeys">WASD 行走 · J 挥刃 · G 灵鹿冲刺 · E 交互 · Q 满月护体 · R 召月 · V 妖兽志 · Tab 换人 · B 行囊 · M 静音 · Esc 关闭面板</div>
   </div>
@@ -490,6 +491,26 @@
       <div class="optRow"><span>上手清单</span><span id="helpTut" style="opacity:.86;cursor:pointer;color:#a9d9ee">展开</span></div>
     <div class="btns"><button class="btn primary" id="helpClose">知道了</button></div>
     <div class="mmKeys" style="margin-top:8px">新手建议：先沿月光走，遇到妖兽先退两步看清出手节奏，再回头挥刃。</div>
+  </div>
+</div>
+
+<div class="overlay" id="aboutDlg">
+  <div class="card">
+    <h2>关于这座岛</h2>
+    <div class="sub">ABOUT — 版本、署名与存档</div>
+    <p class="desc">全景、角色与特效都由代码现场生成，不依赖任何外部贴图；整个游戏压在一个 HTML 里，断网双击也能玩。</p>
+    <div class="optRow"><span>版本</span><span id="aboutVer" style="opacity:.82">v1.246</span></div>
+    <div class="optRow"><span>引擎</span><span style="opacity:.82">three.js r150 · MIT 许可 · 已内联</span></div>
+    <div class="optRow"><span>制作</span><span style="opacity:.82">hainanxing · 低多边形 + 程序化美术</span></div>
+    <div class="optRow"><span>美术</span><span style="opacity:.82">山水、妖兽、天色皆为代码绘制，无第三方素材</span></div>
+    <div class="optRow"><span>存档</span><span style="opacity:.82">存在本机浏览器，换设备靠导出/导入搬</span></div>
+    <div class="btns">
+      <button class="btn" id="aboutSave">导出存档</button>
+      <button class="btn" id="aboutLoad">导入存档</button>
+      <button class="btn primary" id="aboutClose">知道了</button>
+    </div>
+    <input type="file" id="aboutFile" accept=".json,application/json" style="display:none">
+    <div class="mmKeys" style="margin-top:8px">导入会覆盖这台机器上的存档，先「导出存档」备份一份更稳。</div>
   </div>
 </div>
 
@@ -4794,6 +4815,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
+  var GAME_VER = 'v1.246';
   var state = { hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -4850,6 +4872,8 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     if (k === 'escape') {
       var hdOv = document.getElementById('helpDlg');
       if (hdOv && hdOv.classList.contains('show')) { isleHelpOpen(false); return; }
+      var abOv = document.getElementById('aboutDlg');
+      if (abOv && abOv.classList.contains('show')) { isleAboutOpen(false); return; }
       if (szOn) { closeSealZoom(false); return; }
       var alOv = document.getElementById('album');
       if (alOv && alOv.classList.contains('show')) { alOv.classList.remove('show'); return; }
@@ -13672,6 +13696,67 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     var d2 = document.getElementById('helpDlg');
     if (d2) d2.addEventListener('click', function (e) { if (e.target === d2) isleHelpOpen(false); });
   }
+  var _aboutWired = 0;
+  function isleAboutOpen(on) {
+    var d = document.getElementById('aboutDlg');
+    if (!d) return false;
+    if (on) {
+      var vv = document.getElementById('aboutVer');
+      if (vv) vv.textContent = GAME_VER;
+      d.classList.add('show');
+    } else d.classList.remove('show');
+    return true;
+  }
+  function isleAboutExport() {
+    var out = { v: GAME_VER, at: Date.now(), save: null, opts: null };
+    try { var s0 = localStorage.getItem(SAVE_KEY); if (s0) out.save = JSON.parse(s0); } catch (e0) { }
+    try { var o0 = localStorage.getItem(OPT_KEY); if (o0) out.opts = JSON.parse(o0); } catch (e1) { }
+    if (!out.save && !out.opts) { showToast('还没有存档可导出'); return; }
+    var dt = new Date(), pd = function (n) { return (n < 10 ? '0' : '') + n; };
+    var nm = '鹿回头存档-' + dt.getFullYear() + pd(dt.getMonth() + 1) + pd(dt.getDate()) + '.json';
+    var blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = nm;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e2) { } }, 900);
+    showToast('存档已导出 · ' + nm);
+  }
+  function isleAboutImport(file) {
+    if (!file) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      var obj = null;
+      try { obj = JSON.parse(String(rd.result)); } catch (e3) { }
+      if (!obj || (!obj.save && !obj.opts)) { showToast('这不像鹿回头的存档文件'); return; }
+      try {
+        if (obj.save) localStorage.setItem(SAVE_KEY, JSON.stringify(obj.save));
+        if (obj.opts) localStorage.setItem(OPT_KEY, JSON.stringify(obj.opts));
+      } catch (e4) { showToast('写入失败 · 浏览器存储可能已满'); return; }
+      try { killSave = true; } catch (eK) { }
+      showToast('存档已导入 · 正在重载');
+      setTimeout(function () { location.reload(); }, 900);
+    };
+    rd.onerror = function () { showToast('文件读不出来'); };
+    rd.readAsText(file);
+  }
+  function isleAboutWire() {
+    if (_aboutWired) return;
+    _aboutWired = 1;
+    var mb = document.getElementById('mmAbout');
+    if (mb) mb.addEventListener('click', function (e) { e.stopPropagation(); isleAboutOpen(true); });
+    var cb = document.getElementById('aboutClose');
+    if (cb) cb.addEventListener('click', function () { isleAboutOpen(false); });
+    var d = document.getElementById('aboutDlg');
+    if (d) d.addEventListener('click', function (e) { if (e.target === d) isleAboutOpen(false); });
+    var ex = document.getElementById('aboutSave');
+    if (ex) ex.addEventListener('click', function (e) { e.stopPropagation(); isleAboutExport(); });
+    var ld = document.getElementById('aboutLoad');
+    if (ld) ld.addEventListener('click', function (e) { e.stopPropagation(); var f0 = document.getElementById('aboutFile'); if (f0) { f0.value = ''; f0.click(); } });
+    var f = document.getElementById('aboutFile');
+    if (f) f.addEventListener('change', function () { if (this.files && this.files[0]) isleAboutImport(this.files[0]); });
+  }
   function showMainMenu(loaded) {
     mmLoaded = !!loaded;
     var gM = document.getElementById('guideBox');
@@ -13679,6 +13764,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     if (gM) gM.style.display = 'none';
     if (hbM) hbM.style.display = 'none';
     isleHelpWire();
+    isleAboutWire();
     state.paused = true;
     el.hint.classList.remove('show');
     if (mainMenuEl) mainMenuEl.classList.add('show');
@@ -13797,6 +13883,8 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   }
   function closeMainMenu() {
     if (mainMenuEl) mainMenuEl.classList.remove('show');
+    var abOvC = document.getElementById('aboutDlg');
+    if (abOvC) abOvC.classList.remove('show');
     setTimeout(function () { try { isleHelpBtn(); } catch (eHB) { } }, 300);
     setTimeout(function () { try { isleTutUI(); } catch (eTU) { } }, 320);
     if (!window.__isleTutInt) window.__isleTutInt = setInterval(function () { try { isleTutTick(); } catch (eTT) { } }, 1200);
