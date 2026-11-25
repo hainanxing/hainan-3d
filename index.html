@@ -416,6 +416,18 @@
 <div id="eclipse"></div>
 <div id="hurt"></div>
 <div id="dbg"></div>
+<style>
+body.photo #vitalWrap, body.photo #miniWrap, body.photo #phaseTag, body.photo #questTag,
+body.photo #lumenVoice, body.photo #btnWrap, body.photo #comboBar, body.photo #floaters,
+body.photo #mbWrap, body.photo #helpBtn, body.photo #guideBox, body.photo #toast,
+body.photo #dbg, body.photo #hurt { display:none !important; }
+body.photo #photoHint { display:block !important; }
+body.photo .hud { display:none !important; }
+body.photo #lumenVoice, body.photo #miniWrap, body.photo #guide { display:none !important; }
+</style>
+<div id="photoBarT" style="position:fixed;left:0;top:0;width:100%;height:0;background:#000;z-index:60;pointer-events:none;transition:height .25s"></div>
+<div id="photoBarB" style="position:fixed;left:0;bottom:0;width:100%;height:0;background:#000;z-index:60;pointer-events:none;transition:height .25s"></div>
+<div id="photoHint" style="display:none;position:fixed;left:50%;bottom:calc(6vh + 14px);transform:translateX(-50%);padding:6px 14px;font-size:11px;letter-spacing:1.4px;color:rgba(226,238,248,.86);background:rgba(6,12,18,.55);border:1px solid rgba(255,214,140,.35);border-radius:14px;z-index:61;pointer-events:none;white-space:nowrap">旅图 · 拖动转视角 · 滚轮远近 · P 退出</div>
 <div id="err"></div>
 
 <div class="overlay" id="dlg">
@@ -4821,7 +4833,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.247';
+  var GAME_VER = 'v1.248';
   var state = { hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -4829,6 +4841,9 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     var k = e.key.toLowerCase();
     unlockAudio();
     if (cine.on) return;
+    if (k === 'p') { e.preventDefault(); e.stopImmediatePropagation(); if (!szOn && !state.ended) islePhotoToggle(); return; }
+    if (k === 'escape' && islePhoto) { e.preventDefault(); e.stopImmediatePropagation(); islePhotoToggle(false); return; }
+    if (islePhoto) return;
     if (szOn && (k === 'e' || k === ' ' || k === 'enter')) { closeSealZoom(true); return; }
     keys[k] = true;
     if ((k === 'e' || k === ' ') && !state.paused) {
@@ -14737,8 +14752,52 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     if (t > 15.4) finishCine();
   }
 
+  var islePhoto = false, photoHidden = [];
+  function islePhotoToggle(force) {
+    var on = (typeof force === 'boolean') ? force : !islePhoto;
+    if (on === islePhoto) return;
+    if (on) {
+      var ov = document.querySelector('.overlay.show');
+      if (ov || state.ended || szOn) { showToast('先关掉当前面板，再进旅图'); return; }
+    }
+    islePhoto = on;
+    document.body.classList.toggle('photo', on);
+    if (on) {
+      photoHidden = [];
+      scene.traverse(function (o) {
+        if (o.isSprite && (o.userData.isLabel || (o.material && o.material.map && o.scale.y > 30))) { o.visible = false; photoHidden.push(o); }
+      });
+    } else {
+      for (var pi = 0; pi < photoHidden.length; pi++) photoHidden[pi].visible = true;
+      photoHidden = [];
+    }
+    var bt = document.getElementById('photoBarT'), bb = document.getElementById('photoBarB');
+    if (bt) bt.style.height = on ? '6vh' : '0px';
+    if (bb) bb.style.height = on ? '6vh' : '0px';
+    if (on) {
+      state.paused = true;
+      keys = Object.create(null);
+      camPitch = 0.40;
+      if (camDist < 220 || camDist > 620) camDist = 380;
+      updateCamera(1);
+      showToast('旅图 · 按 P 退出');
+    } else {
+      state.paused = false;
+      camPitch = 0.54;
+      if (camDist < 220) camDist = 350;
+      updateCamera(1);
+      showToast('已回到岛上');
+    }
+  }
+
   function updateCamera(k) {
     if (sealTour.on) return;
+    if (islePhoto) {
+      var cq = Math.cos(camPitch);
+      camera.position.set(Math.sin(camYaw) * cq * camDist, 24 + Math.sin(camPitch) * camDist * 0.62, Math.cos(camYaw) * cq * camDist);
+      camera.lookAt(0, 26, 0);
+      return;
+    }
     var S = WSCALE;
     var px = player.position.x * S;
     var py = player.position.y * S;
@@ -14859,6 +14918,13 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     var dt = Math.min(clock.getDelta(), 0.05);
     try {
       update(dt);
+      if (islePhoto) {
+        for (var pj = 0; pj < photoHidden.length; pj++) photoHidden[pj].visible = false;
+        if (!dragging) camYaw += dt * 0.10;
+        var cq6 = Math.cos(camPitch);
+        camera.position.set(Math.sin(camYaw) * cq6 * camDist, 24 + Math.sin(camPitch) * camDist * 0.62, Math.cos(camYaw) * cq6 * camDist);
+        camera.lookAt(0, 26, 0);
+      }
       drawMini();
       renderer.render(scene, camera);
     } catch (err) {
