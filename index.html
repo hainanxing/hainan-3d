@@ -8006,7 +8006,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     var dnL = [], dnS = {}, dnA = state.isleStopDiary || [];
     for (var iN = 0; iN < dnA.length && dnL.length < 2; iN++) {
       var eN = dnA[iN];
-      if (!eN || !eN.t || !eN.k || dnS[eN.t]) continue;
+      if (!eN || !eN.t || !eN.k || eN.k === 'gift' || dnS[eN.t]) continue;
       dnS[eN.t] = 1; dnL.push(eN);
     }
     var qY = 1172, fY = 1208;
@@ -8495,7 +8495,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     wipe: { dur: 620, rgb: '255,214,140', ba: '.75', dot: null, keys: [{ p: 0, sc: 2.6, op: .8 }, { p: 1, sc: 1, op: 0 }] },
     back: { dur: 760, rgb: '255,217,122', ba: '.88', dot: null, keys: [{ p: 0, sc: .6, op: .5 }, { p: 0.55, sc: 2.1, op: .9 }, { p: 1, sc: 1, op: 0 }] }
   };
-  var ISLE_DIARY_LABELS = { add: '记下', wipe: '抹掉', undo: '撤销', go: '续走', swap: '换位', unsw: '倒回' };
+  var ISLE_DIARY_LABELS = { add: '记下', wipe: '抹掉', undo: '撤销', go: '续走', swap: '换位', unsw: '倒回', gift: '赠礼' };
   function isleDiaryAdd(kind, sec, other) {
     if (!kind || !sec) return;
     var d0 = (state.isleStopDiary || []).slice(0);
@@ -9223,7 +9223,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
       if (bk !== 'all' && isleDiaryBat(eF.t) !== bk) continue;
       fList.push(eF);
     }
-    var chips = [['all', '全部'], ['add', '记下'], ['wipe', '抹掉'], ['undo', '撤销'], ['go', '续走'], ['swap', '换位']];
+    var chips = [['all', '全部'], ['add', '记下'], ['wipe', '抹掉'], ['undo', '撤销'], ['go', '续走'], ['swap', '换位'], ['gift', '赠礼']];
     var chHtml = [];
     for (var iC = 0; iC < chips.length; iC++) {
       var onC = (fk === chips[iC][0]);
@@ -9260,6 +9260,12 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     for (var i2 = 0; i2 < groups.length; i2++) {
       var g0 = groups[i2], top0 = g0.items[0];
       var cnote = g0.n > 1 ? ('<span style="opacity:.5"> ×' + g0.n + (isleDiaryOpenSec === g0.t ? ' ▴' : ' ▾') + '</span>') : '';
+      if (top0.k === 'gift') {
+        rows.push('<div title="上手三步完成时灵鹿给的礼 · 挥刃 +3、月华碎片 +1、体力回满" style="padding:1px 0;opacity:.94">'
+          + '<span style="color:#ffe9bf">赠礼</span> <span style="color:#9fe0c4">灵鹿</span>'
+          + '<span style="opacity:.55"> · ' + isleAgeTxt(top0.at) + '</span>' + cnote + '</div>');
+        continue;
+      }
       rows.push('<div data-sec="' + g0.t + '" data-cnt="' + g0.t + '"' + (g0.n > 1 ? ' data-tgl="1"' : '')
         + ' title="' + (g0.n > 1 ? ('展开/收起「' + g0.t + '」的 ' + g0.n + ' 次动作') : ('跳到「' + g0.t + '」并把停点设在那里')) + (bof(g0.t) ? (' · ' + bof(g0.t)) : '') + '"'
         + ' style="cursor:pointer;padding:1px 0">' + ((top0.k === 'unsw') ? ('<span style="opacity:.6">' + (ISLE_DIARY_LABELS[top0.k] || '?') + '</span>') : (ISLE_DIARY_LABELS[top0.k] || '?')) + ' <span style="color:#ffe9bf">' + g0.t + '</span>'
@@ -13728,6 +13734,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     state.blade = (state.blade | 0) + 3;
     if (sh0 < 5) state.shard = sh0 + 1;
     if (state.hp < state.hpMax) state.hp = state.hpMax;
+    try { isleDiaryAdd('gift', '赠礼'); } catch (eG4) { }
     try { saveGame(); } catch (eG0) { }
     try { updateBladeTip(); } catch (eG1) { }
     try { refreshQuestTag(); } catch (eG2) { }
