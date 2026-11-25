@@ -8054,9 +8054,26 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     g.fillText('「山海不言，录者代其言」', W / 2, qY);
     g.fillStyle = 'rgba(159,216,255,.5)'; g.font = '14px sans-serif';
     g.fillText('南海仙岛 · 鹿回头 · 守岛录卡背', W / 2, fY);
+    var gAt0 = isleGiftAt();
+    if (gAt0) {
+      var dG = new Date(gAt0);
+      g.textAlign = 'right';
+      g.font = '12px sans-serif';
+      g.fillStyle = 'rgba(255,224,160,.58)';
+      g.fillText('灵鹿赠礼 · ' + (dG.getMonth() + 1) + '-' + dG.getDate(), W - 46, fY);
+      g.fillStyle = 'rgba(255,224,160,.3)';
+      g.fillRect(W - 152, fY - 24, 106, 1);
+    }
     return cv.toDataURL('image/png');
   }
 
+  function isleGiftAt() {
+    var d = state.isleStopDiary || [];
+    for (var i = 0; i < d.length; i++) {
+      if (d[i] && d[i].k === 'gift' && d[i].at) return d[i].at;
+    }
+    return 0;
+  }
   var cardSide = 'front';
   var tsNavList = [];
   var isleFrom = null;
@@ -9089,7 +9106,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     var seen = {}, list = [];
     for (var i = 0; i < d.length && list.length < 2; i++) {
       var en = d[i];
-      if (!en || !en.t || !en.k) continue;
+      if (!en || !en.t || !en.k || en.k === 'gift') continue;
       if (seen[en.t]) continue;
       seen[en.t] = 1; list.push(en);
     }
@@ -13707,19 +13724,19 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     if (!box) {
       box = document.createElement('div');
       box.id = 'guideBox';
-      box.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:40;padding:6px 9px;border-radius:9px;font-size:10px;letter-spacing:.4px;line-height:15px;pointer-events:auto;'
+      box.style.cssText = 'position:fixed;left:12px;bottom:96px;min-width:124px;max-width:calc(100vw - 24px);z-index:40;padding:6px 9px;border-radius:9px;font-size:10px;letter-spacing:.4px;line-height:15px;pointer-events:auto;'
         + 'background:rgba(12,20,28,.9);border:1px solid rgba(150,190,220,.3);color:rgba(214,232,246,.9);box-shadow:0 4px 14px rgba(0,0,0,.34)';
       document.body.appendChild(box);
     }
     var rowT = function (ok, t) {
-      return '<div style="' + (ok ? 'opacity:.5;text-decoration:line-through' : '') + '">' + (ok ? '✓ ' : '○ ') + t + '</div>';
+      return '<div style="white-space:nowrap;' + (ok ? 'opacity:.5;text-decoration:line-through' : '') + '">' + (ok ? '✓ ' : '○ ') + t + '</div>';
     };
     box.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:1px">'
       + '<span style="opacity:.62">上手 · ' + n + '/3</span>'
       + '<span data-tutx="1" style="margin-left:auto;cursor:pointer;opacity:.55;font-size:11px;padding:0 2px">✕</span></div>'
-      + rowT(!!(v & 1), '走两步：WASD 晃晃')
-      + rowT(!!(v & 2), '去月神树看一眼')
-      + rowT(!!(v & 4), '击退一只妖兽（J 挥刃）');
+      + rowT(!!(v & 1), 'WASD 走两步')
+      + rowT(!!(v & 2), '走近月神树')
+      + rowT(!!(v & 4), 'J 退一只妖');
     var tx = box.querySelector('[data-tutx]');
     if (tx && !tx.__w) { tx.__w = 1; tx.addEventListener('click', function (e) { e.stopPropagation(); isleTutToggle(1); }); }
     var hdEl = document.getElementById('helpDlg');
