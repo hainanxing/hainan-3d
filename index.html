@@ -4793,7 +4793,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var state = { hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
+  var state = { hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
   window.addEventListener('keydown', function (e) {
@@ -6883,6 +6883,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
         isleAllLastSecPrevAt: (state.isleAllLastSecPrevAt || 0),
         isleAllLastSecPrev: (typeof state.isleAllLastSecPrev === 'string' ? state.isleAllLastSecPrev.slice(0, 4) : ''),
         isleCardLine: '',
+        isleTut: (state.isleTut | 0),
         isleNoteSpot: (function () {
           var o = {}, mpZ = state.isleNoteSpot || {};
           for (var kZ in mpZ) { if (mpZ.hasOwnProperty(kZ) && kZ.length <= 4 && typeof mpZ[kZ] === 'number') o[kZ] = mpZ[kZ]; }
@@ -7051,6 +7052,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
       } catch (e) {}
       return a;
     })();
+    state.isleTut = (typeof s.isleTut === 'number' && s.isleTut >= 0 && s.isleTut <= 7) ? (s.isleTut | 0) : 0;
     state.isleCardLine = (function () {
       var t0 = (typeof s.isleCardLine === 'string') ? s.isleCardLine : '';
       t0 = t0.replace(/[<>\r\n]/g, '').replace(/^[\s\u3000]+|[\s\u3000]+$/g, '');
@@ -13655,7 +13657,54 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     lumenSay('岛上的月还没亮。先循我的影子，把五处遗迹看一遍吧。');
   }
 
-  function isleHelpBtn() {
+  var _tutLast = { x: 0, z: 0, on: 0 }, _tutMove = 0, _tutHideT = 0;
+  function isleTutUI() {
+    var box = document.getElementById('guideBox');
+    var v = (state.isleTut | 0);
+    var n = (v & 1 ? 1 : 0) + (v & 2 ? 1 : 0) + (v & 4 ? 1 : 0);
+    if (v >= 7) { if (box) box.style.display = 'none'; return; }
+    if (!box) {
+      var p0 = document.getElementById('cardPrev');
+      var host = (p0 && p0.querySelector('.panel')) || p0 || document.body;
+      box = document.createElement('div');
+      box.id = 'guideBox';
+      box.style.cssText = 'position:absolute;left:12px;bottom:12px;z-index:12;padding:6px 9px;border-radius:9px;font-size:10px;letter-spacing:.4px;line-height:15px;'
+        + 'background:rgba(12,20,28,.9);border:1px solid rgba(150,190,220,.3);color:rgba(214,232,246,.9);box-shadow:0 4px 14px rgba(0,0,0,.34)';
+      host.appendChild(box);
+    }
+    var rowT = function (ok, t) {
+      return '<div style="' + (ok ? 'opacity:.5;text-decoration:line-through' : '') + '">' + (ok ? '✓ ' : '○ ') + t + '</div>';
+    };
+    box.innerHTML = '<div style="opacity:.62;margin-bottom:1px">上手 · ' + n + '/3</div>'
+      + rowT(!!(v & 1), '走两步：WASD 晃晃')
+      + rowT(!!(v & 2), '去月神树看一眼')
+      + rowT(!!(v & 4), '击退一只妖兽（J 挥刃）');
+    box.style.display = 'block';
+  }
+  function isleTutTick() {
+    if (!player || !state || state.paused) return;
+    var v = (state.isleTut | 0);
+    if (v >= 7) return;
+    var px = player.position.x, pz = player.position.z;
+    if (_tutLast.on) _tutMove += Math.hypot(px - _tutLast.x, pz - _tutLast.z);
+    _tutLast.x = px; _tutLast.z = pz; _tutLast.on = 1;
+    if (!(v & 1) && _tutMove > 240) { v |= 1; state.isleTut = v; saveGame(); isleTutUI(); showToast('上手 1/3 · 走起来了'); }
+    if (!(v & 2) && typeof MOON_TREE !== 'undefined' && Math.hypot(px - MOON_TREE.x, pz - MOON_TREE.z) < 90) {
+      v |= 2; state.isleTut = v; saveGame(); isleTutUI(); showToast('上手 2/3 · 月神树就在眼前');
+    }
+    var kk = state.codexKills || {}, kn = 0;
+    for (var k in kk) { if (kk[k]) kn++; }
+    if (!(v & 4) && kn > 0) { v |= 4; state.isleTut = v; saveGame(); isleTutUI(); showToast('上手 3/3 · 第一只已退'); }
+    if (v >= 7) {
+      if (_tutHideT) clearTimeout(_tutHideT);
+      _tutHideT = setTimeout(function () {
+        var b = document.getElementById('guideBox');
+        if (b) b.style.display = 'none';
+        showToast('上手完成 · 岛上随便逛，卡面随时导出');
+      }, 2600);
+    }
+  }
+    function isleHelpBtn() {
     var b = document.getElementById('helpBtn');
     if (b) { b.style.display = 'block'; return b; }
     var p0 = document.getElementById('cardPrev');
@@ -13674,6 +13723,8 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   function closeMainMenu() {
     if (mainMenuEl) mainMenuEl.classList.remove('show');
     setTimeout(function () { try { isleHelpBtn(); } catch (eHB) { } }, 300);
+    setTimeout(function () { try { isleTutUI(); } catch (eTU) { } }, 320);
+    if (!window.__isleTutInt) window.__isleTutInt = setInterval(function () { try { isleTutTick(); } catch (eTT) { } }, 1200);
     if (!isleHelpSeen()) setTimeout(function () { try { isleHelpOpen(true); } catch (eHO) { } }, 900);
     state.paused = false;
     introVoice();
