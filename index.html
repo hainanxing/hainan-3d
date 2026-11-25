@@ -552,8 +552,14 @@
     <div id="cardNums" style="display:none;gap:6px;flex-wrap:wrap;justify-content:center;padding:0 0 10px"></div>
     <div id="allLogChip" style="display:none;padding:0 0 8px;flex-wrap:wrap;align-items:center;justify-content:center"><span id="allLogDoneTxt" style="display:none;font-size:11px;letter-spacing:1px;color:rgba(190,212,230,.72);margin-right:5px">本轮已走完</span><button id="allLogGo" style="padding:5px 12px;font-size:11px;letter-spacing:1px;color:#a6dcc6;background:rgba(16,34,30,.75);border:1px solid rgba(120,200,170,.45);border-radius:14px;cursor:pointer">上次补存 · 去看看 ›</button><button id="allLogSwap" style="display:none;margin-left:6px;padding:5px 10px;font-size:11px;letter-spacing:1px;color:rgba(198,220,238,.8);background:rgba(18,24,34,.7);border:1px solid rgba(140,170,200,.35);border-radius:14px;cursor:pointer">切到上一批</button><span id="allLogDoneSecs" style="display:none;margin-left:6px"></span></div>
     <div id="allStrip" style="display:none;gap:6px;flex-wrap:wrap;justify-content:center;padding:0 0 8px;max-height:200px;overflow-y:auto"></div>
-    <div class="btns"><a class="btn primary" id="cardSave" download="鹿回头战绩卡.png" href="#">保存 PNG</a><button class="btn" id="cardExcerpt" style="display:none">存摘录卡</button><button class="btn" id="cardBackFace" style="display:none">存背面</button><button class="btn" id="cardAll" style="display:none">存全套</button><button class="btn" id="cardJump" style="display:none">跳留影区</button><button class="btn" id="cardFlip">看卡背</button><button class="btn" id="cardCombo">双面合卡</button><button class="btn" id="cardSort" style="display:none">按印名</button><button class="btn" id="cardBack">返回</button></div>
+    <div class="btns"><a class="btn primary" id="cardSave" download="鹿回头战绩卡.png" href="#">保存 PNG</a><button class="btn" id="cardExcerpt" style="display:none">存摘录卡</button><button class="btn" id="cardBackFace" style="display:none">存背面</button><button class="btn" id="cardAll" style="display:none">存全套</button><button class="btn" id="cardJump" style="display:none">跳留影区</button><button class="btn" id="cardFlip">看卡背</button><button class="btn" id="cardFull">整图</button><button class="btn" id="cardCombo">双面合卡</button><button class="btn" id="cardSort" style="display:none">按印名</button><button class="btn" id="cardBack">返回</button></div>
   </div>
+</div>
+
+<div id="cardFullBox" style="display:none;position:fixed;inset:0;background:rgba(4,6,12,.94);z-index:9005;align-items:center;justify-content:center;flex-direction:column;padding:12px">
+  <img id="cardFullImg" alt="整图" style="max-width:94vw;max-height:88vh;border-radius:8px;border:1px solid rgba(255,214,140,.3);box-shadow:0 18px 50px rgba(0,0,0,.6)">
+  <div id="cardFullCap" style="margin-top:8px;font-size:11px;letter-spacing:.8px;color:rgba(200,220,238,.72);text-align:center"></div>
+  <div style="margin-top:3px;font-size:10px;letter-spacing:1px;color:rgba(190,212,230,.45)">点任意处关闭 · ESC 亦可</div>
 </div>
 
 <div id="sealPop"></div>
@@ -4815,7 +4821,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.246';
+  var GAME_VER = 'v1.247';
   var state = { hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -12329,6 +12335,45 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     if (cardSide === 'scroll' && typeof isleRatio === 'number') { try { saveGame(); } catch (e) {} }
     isleFrom = null;
   }
+
+  function isleCardFullOpen() {
+    var img = document.getElementById('cardImg');
+    var box = document.getElementById('cardFullBox');
+    var bi = document.getElementById('cardFullImg');
+    var cap = document.getElementById('cardFullCap');
+    if (!img || !box || !bi || !img.src) return;
+    bi.src = img.src;
+    if (cap) {
+      var nm = cardSide === 'back' ? '卡背 · 守岛录十六格'
+        : cardSide === 'scroll' ? '岛志长图'
+          : cardSide === 'mooncal' ? '月相历'
+            : cardSide === 'gallery' ? '留影册' : '卡面 · 战绩卡';
+      cap.textContent = nm + ' · ' + (img.naturalWidth || 0) + ' × ' + (img.naturalHeight || 0);
+    }
+    var strip = (img.naturalHeight / (img.naturalWidth || 1)) > 2.4;
+    box.style.overflowY = strip ? 'auto' : 'hidden';
+    box.style.justifyContent = strip ? 'flex-start' : 'center';
+    bi.style.maxHeight = strip ? 'none' : '88vh';
+    bi.style.width = strip ? 'min(760px, 92vw)' : 'auto';
+    bi.style.maxWidth = strip ? '92vw' : '94vw';
+    box.style.display = 'flex';
+  }
+  function isleCardFullClose() {
+    var box = document.getElementById('cardFullBox');
+    if (box) box.style.display = 'none';
+  }
+  var cardFullEl = document.getElementById('cardFull');
+  if (cardFullEl) cardFullEl.addEventListener('click', function () { isleCardFullOpen(); });
+  var cardFullBoxEl = document.getElementById('cardFullBox');
+  if (cardFullBoxEl) cardFullBoxEl.addEventListener('click', function () { isleCardFullClose(); });
+  document.addEventListener('keydown', function (e) {
+    var box = document.getElementById('cardFullBox');
+    if (!box || box.style.display !== 'flex') return;
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      e.preventDefault(); e.stopPropagation();
+      isleCardFullClose();
+    }
+  }, true);
 
   function renderRankPanel() {
     var tEl = document.getElementById('rankTitle');
