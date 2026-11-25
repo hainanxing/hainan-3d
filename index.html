@@ -487,6 +487,7 @@
     <div class="optRow"><span>岛志长图</span><span style="opacity:.82">点右侧竖条上的点回停；导航点一下回停，按住 0.6 秒回卷首</span></div>
     <div class="optRow"><span>摘录卡</span><span style="opacity:.82">卡背能给每节写一句自述（≤28 字），导出 PNG 时一并刻上</span></div>
     <div class="optRow"><span>存档</span><span style="opacity:.82">存在浏览器本地，换设备或清缓存会丢</span></div>
+      <div class="optRow"><span>上手清单</span><span id="helpTut" style="opacity:.86;cursor:pointer;color:#a9d9ee">展开</span></div>
     <div class="btns"><button class="btn primary" id="helpClose">知道了</button></div>
     <div class="mmKeys" style="margin-top:8px">新手建议：先沿月光走，遇到妖兽先退两步看清出手节奏，再回头挥刃。</div>
   </div>
@@ -4793,7 +4794,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var state = { hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
+  var state = { hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
   window.addEventListener('keydown', function (e) {
@@ -6884,6 +6885,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
         isleAllLastSecPrev: (typeof state.isleAllLastSecPrev === 'string' ? state.isleAllLastSecPrev.slice(0, 4) : ''),
         isleCardLine: '',
         isleTut: (state.isleTut | 0),
+        isleTutSkip: (state.isleTutSkip ? 1 : 0),
         isleNoteSpot: (function () {
           var o = {}, mpZ = state.isleNoteSpot || {};
           for (var kZ in mpZ) { if (mpZ.hasOwnProperty(kZ) && kZ.length <= 4 && typeof mpZ[kZ] === 'number') o[kZ] = mpZ[kZ]; }
@@ -7053,6 +7055,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
       return a;
     })();
     state.isleTut = (typeof s.isleTut === 'number' && s.isleTut >= 0 && s.isleTut <= 7) ? (s.isleTut | 0) : 0;
+    state.isleTutSkip = (s.isleTutSkip ? 1 : 0);
     state.isleCardLine = (function () {
       var t0 = (typeof s.isleCardLine === 'string') ? s.isleCardLine : '';
       t0 = t0.replace(/[<>\r\n]/g, '').replace(/^[\s\u3000]+|[\s\u3000]+$/g, '');
@@ -13619,10 +13622,18 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   function isleHelpOpen(on) {
     var d = document.getElementById('helpDlg');
     if (!d) return false;
-    if (on) d.classList.add('show');
+    var g = document.getElementById('guideBox');
+    var hb = document.getElementById('helpBtn');
+    if (on) {
+      d.classList.add('show');
+      if (g) g.style.display = 'none';
+      if (hb) hb.style.display = 'none';
+    }
     else {
       d.classList.remove('show');
       try { localStorage.setItem('nanhai_isle_help_seen', '1'); } catch (e) { }
+      try { isleTutUI(); } catch (e1) { }
+      try { isleHelpBtn(); } catch (e2) { }
     }
     return true;
   }
@@ -13633,11 +13644,17 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     if (c) c.addEventListener('click', function () { isleHelpOpen(false); });
     var m = document.getElementById('mmHelp');
     if (m) m.addEventListener('click', function (e) { e.stopPropagation(); isleHelpOpen(true); });
+    var ht = document.getElementById('helpTut');
+    if (ht) ht.addEventListener('click', function (e) { e.stopPropagation(); isleTutToggle(); });
     var d2 = document.getElementById('helpDlg');
     if (d2) d2.addEventListener('click', function (e) { if (e.target === d2) isleHelpOpen(false); });
   }
   function showMainMenu(loaded) {
     mmLoaded = !!loaded;
+    var gM = document.getElementById('guideBox');
+    var hbM = document.getElementById('helpBtn');
+    if (gM) gM.style.display = 'none';
+    if (hbM) hbM.style.display = 'none';
     isleHelpWire();
     state.paused = true;
     el.hint.classList.remove('show');
@@ -13658,28 +13675,64 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   }
 
   var _tutLast = { x: 0, z: 0, on: 0 }, _tutMove = 0, _tutHideT = 0;
+  function isleTutHelpSync() {
+    var ht = document.getElementById('helpTut');
+    if (!ht) return;
+    var v = (state.isleTut | 0);
+    var n = (v & 1 ? 1 : 0) + (v & 2 ? 1 : 0) + (v & 4 ? 1 : 0);
+    if (v >= 7) ht.textContent = '三步已完成';
+    else if (state.isleTutSkip) ht.textContent = '已收起 · 展开（' + n + '/3）';
+    else ht.textContent = '展开中 · 收起（' + n + '/3）';
+  }
+  function isleTutToggle(force) {
+    if (!state) return;
+    if ((state.isleTut | 0) >= 7) { showToast('上手三步已完成'); return; }
+    var to = (typeof force === 'number') ? (force ? 1 : 0) : (state.isleTutSkip ? 0 : 1);
+    state.isleTutSkip = to;
+    saveGame();
+    isleTutUI();
+    showToast(to ? '上手清单已收起 · 点左上 ? 可再展开' : '上手清单已展开 · 三步还在');
+  }
   function isleTutUI() {
     var box = document.getElementById('guideBox');
     var v = (state.isleTut | 0);
     var n = (v & 1 ? 1 : 0) + (v & 2 ? 1 : 0) + (v & 4 ? 1 : 0);
-    if (v >= 7) { if (box) box.style.display = 'none'; return; }
+    if (v >= 7 || state.isleTutSkip) { if (box) box.style.display = 'none'; isleTutHelpSync(); return; }
     if (!box) {
-      var p0 = document.getElementById('cardPrev');
-      var host = (p0 && p0.querySelector('.panel')) || p0 || document.body;
       box = document.createElement('div');
       box.id = 'guideBox';
-      box.style.cssText = 'position:absolute;left:12px;bottom:12px;z-index:12;padding:6px 9px;border-radius:9px;font-size:10px;letter-spacing:.4px;line-height:15px;'
+      box.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:40;padding:6px 9px;border-radius:9px;font-size:10px;letter-spacing:.4px;line-height:15px;pointer-events:auto;'
         + 'background:rgba(12,20,28,.9);border:1px solid rgba(150,190,220,.3);color:rgba(214,232,246,.9);box-shadow:0 4px 14px rgba(0,0,0,.34)';
-      host.appendChild(box);
+      document.body.appendChild(box);
     }
     var rowT = function (ok, t) {
       return '<div style="' + (ok ? 'opacity:.5;text-decoration:line-through' : '') + '">' + (ok ? '✓ ' : '○ ') + t + '</div>';
     };
-    box.innerHTML = '<div style="opacity:.62;margin-bottom:1px">上手 · ' + n + '/3</div>'
+    box.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:1px">'
+      + '<span style="opacity:.62">上手 · ' + n + '/3</span>'
+      + '<span data-tutx="1" style="margin-left:auto;cursor:pointer;opacity:.55;font-size:11px;padding:0 2px">✕</span></div>'
       + rowT(!!(v & 1), '走两步：WASD 晃晃')
       + rowT(!!(v & 2), '去月神树看一眼')
       + rowT(!!(v & 4), '击退一只妖兽（J 挥刃）');
-    box.style.display = 'block';
+    var tx = box.querySelector('[data-tutx]');
+    if (tx && !tx.__w) { tx.__w = 1; tx.addEventListener('click', function (e) { e.stopPropagation(); isleTutToggle(1); }); }
+    var hdEl = document.getElementById('helpDlg');
+    box.style.display = (hdEl && hdEl.classList.contains('show')) ? 'none' : 'block';
+    isleTutHelpSync();
+  }
+  var _tutGifted = 0;
+  function isleTutGift() {
+    if (_tutGifted) return;
+    _tutGifted = 1;
+    var sh0 = (state.shard | 0);
+    state.blade = (state.blade | 0) + 3;
+    if (sh0 < 5) state.shard = sh0 + 1;
+    if (state.hp < state.hpMax) state.hp = state.hpMax;
+    try { saveGame(); } catch (eG0) { }
+    try { updateBladeTip(); } catch (eG1) { }
+    try { refreshQuestTag(); } catch (eG2) { }
+    try { lumenSay('三步既行，岛上便算认了你。这点月华，拿去照路。'); } catch (eG3) { }
+    showToast('灵鹿的赠礼 · 挥刃 +3' + (sh0 < 5 ? ' · 月华碎片 +1' : ' · 月华已满') + ' · 体力回满');
   }
   function isleTutTick() {
     if (!player || !state || state.paused) return;
@@ -13696,28 +13749,26 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     for (var k in kk) { if (kk[k]) kn++; }
     if (!(v & 4) && kn > 0) { v |= 4; state.isleTut = v; saveGame(); isleTutUI(); showToast('上手 3/3 · 第一只已退'); }
     if (v >= 7) {
+      try { isleTutGift(); } catch (eTG) { }
       if (_tutHideT) clearTimeout(_tutHideT);
       _tutHideT = setTimeout(function () {
         var b = document.getElementById('guideBox');
         if (b) b.style.display = 'none';
-        showToast('上手完成 · 岛上随便逛，卡面随时导出');
+        if (!state.isleTutSkip) showToast('上手完成 · 岛上随便逛，卡面随时导出');
       }, 2600);
     }
   }
     function isleHelpBtn() {
     var b = document.getElementById('helpBtn');
     if (b) { b.style.display = 'block'; return b; }
-    var p0 = document.getElementById('cardPrev');
-    var host = (p0 && p0.querySelector('.panel')) || p0;
-    if (!host) return null;
     b = document.createElement('div');
     b.id = 'helpBtn';
     b.textContent = '？';
     b.title = '玩法说明（Esc 关闭）';
-    b.style.cssText = 'position:absolute;left:12px;top:12px;z-index:12;width:22px;height:22px;line-height:20px;text-align:center;border-radius:50%;cursor:pointer;'
+    b.style.cssText = 'position:fixed;left:12px;top:12px;z-index:40;width:22px;height:22px;line-height:20px;text-align:center;border-radius:50%;cursor:pointer;pointer-events:auto;'
       + 'font-size:12px;color:rgba(214,232,246,.88);background:rgba(18,26,34,.9);border:1px solid rgba(150,190,220,.4);box-shadow:0 4px 14px rgba(0,0,0,.36)';
     b.addEventListener('click', function (e) { e.stopPropagation(); isleHelpOpen(true); });
-    host.appendChild(b);
+    document.body.appendChild(b);
     return b;
   }
   function closeMainMenu() {
