@@ -2094,6 +2094,36 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     spawnRing(player.position.x, player.position.z, 3, 26, 0xffd98a, 0.35);
   }
 
+  var questMark = null;
+
+  function ensureQuestMark() {
+    if (questMark) return questMark;
+    var g = new THREE.Group();
+    var moonArc = new THREE.Mesh(
+      new THREE.TorusGeometry(17, 4.2, 8, 22, Math.PI * 1.28),
+      new THREE.MeshBasicMaterial({ color: 0xffd98a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    moonArc.rotation.z = Math.PI * 0.86;
+    g.add(moonArc);
+    g.visible = false;
+    world.add(g);
+    questMark = g;
+    return g;
+  }
+
+  function updateQuestMark(dt) {
+    var g = ensureQuestMark();
+    var t = guideTargetInfo();
+    var on = !islePhoto && !state.paused && state.questLock >= 0 && t.locked && t.dist > 420;
+    g.visible = on;
+    if (!on) return;
+    g.position.x = t.wx;
+    g.position.z = t.wz;
+    g.position.y = GROUND + 132 + Math.sin(state.t * 1.6) * 7;
+    g.rotation.y += dt * 1.15;
+    g.children[0].material.opacity = 0.72 + Math.sin(state.t * 2.4) * 0.16;
+  }
+
   function updateSpirit(dt) {
     if (guideEl) guideEl.dataset.tick = (parseInt(guideEl.dataset.tick || '0', 10) + 1);
     if (!spirit) return;
@@ -4884,7 +4914,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.262';
+  var GAME_VER = 'v1.263';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -14290,6 +14320,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     }
 
     updateSpirit(dt);
+    updateQuestMark(dt);
 
     if (!BOSS.spawned && state.relics >= 5 && state.cores >= 3) spawnBoss();
 
