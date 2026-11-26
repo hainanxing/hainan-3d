@@ -4861,7 +4861,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.257';
+  var GAME_VER = 'v1.258';
   var state = { combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -15064,14 +15064,42 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   // ---------- 小地图 ----------
   var mini = document.getElementById('mini');
   var mctx = mini.getContext('2d');
+  var miniTipEl = document.getElementById('miniTip');
+  var miniZoom = 1;
+
+  function miniTipSync() {
+    if (!miniTipEl) return;
+    miniTipEl.textContent = miniZoom > 1.02
+      ? '小地图 ×' + miniZoom.toFixed(1) + ' · 双击回中'
+      : '小地图 · 箭头为朝向';
+  }
+
+  mini.addEventListener('wheel', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    miniZoom = Math.max(1, Math.min(2.4, miniZoom * (e.deltaY > 0 ? 0.92 : 1.08)));
+    miniTipSync();
+  }, { passive: false });
+
+  mini.addEventListener('dblclick', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    if (miniZoom > 1.02) { miniZoom = 1; miniTipSync(); showToast('小地图 · 已回到全岛'); }
+  });
+  mini.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
   function drawMini() {
     var w = mini.width, h = mini.height;
     mctx.clearRect(0, 0, w, h);
     mctx.fillStyle = 'rgba(6,28,40,0.9)';
     mctx.fillRect(0, 0, w, h);
 
-    var sc = (Math.min(w, h) - 26) / (ISLE_R * 1.55);
-    var cx = w / 2, cy = h / 2;
+    var base = (Math.min(w, h) - 26) / (ISLE_R * 1.55);
+    var sc = base * miniZoom;
+    var cx = w / 2 - player.position.x * (sc - base);
+    var cy = h / 2 - player.position.z * (sc - base);
+
+    mctx.save();
+    mctx.beginPath();
+    mctx.ellipse(w / 2, h / 2, ISLE_R * base * 1.06, ISLE_R * base * 1.06, 0, 0, Math.PI * 2);
+    mctx.clip();
 
     mctx.fillStyle = 'rgba(47,107,67,0.85)';
     mctx.beginPath();
@@ -15080,10 +15108,22 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
 
     for (var i = 0; i < LANDMARKS.length; i++) {
       var lm = LANDMARKS[i];
-      mctx.fillStyle = lm.done ? '#8fd6a6' : '#e8c07a';
+      var lmx = cx + lm.wx * sc, lmy = cy + lm.wz * sc;
       mctx.beginPath();
-      mctx.arc(cx + lm.wx * sc, cy + lm.wz * sc, 3, 0, Math.PI * 2);
-      mctx.fill();
+      mctx.arc(lmx, lmy, 3, 0, Math.PI * 2);
+      if (lm.done) {
+        mctx.fillStyle = '#8fd6a6';
+        mctx.fill();
+        mctx.strokeStyle = 'rgba(143,214,166,.9)';
+        mctx.lineWidth = 1;
+        mctx.beginPath();
+        mctx.arc(lmx, lmy, 4.6, 0, Math.PI * 2);
+        mctx.stroke();
+      } else {
+        mctx.strokeStyle = 'rgba(232,192,122,.95)';
+        mctx.lineWidth = 1.4;
+        mctx.stroke();
+      }
     }
 
     for (var m = 0; m < monsterObjs.length; m++) {
@@ -15150,6 +15190,8 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     mctx.arc(px, py, 2.6, 0, Math.PI * 2);
     mctx.fillStyle = '#3a2c12';
     mctx.fill();
+
+    mctx.restore();
 
     // 方位字（北 = 屏幕上方 = -Z）
     mctx.font = '8px "Microsoft YaHei", sans-serif';
