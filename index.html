@@ -4861,7 +4861,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.256';
+  var GAME_VER = 'v1.257';
   var state = { combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -5423,6 +5423,29 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   function comboAdd() {
     state.combo = (state.combo || 0) + 1;
     state.comboT = 2.4;
+    var c = state.combo;
+    if (c === 5) {
+      spawnFloater(player.position.x, GROUND + 96, player.position.z, '月华连斩 · 五连', '#ffd98a');
+      spawnRing(player.position.x, player.position.z, 3, 40, 0xffd98a, 0.42);
+      shake = Math.max(shake, 0.22);
+    } else if (c === 10) {
+      spawnFloater(player.position.x, GROUND + 104, player.position.z, '十连 · 月华成环', '#ffcf7a');
+      spawnRing(player.position.x, player.position.z, 5, 76, 0xc9a8ff, 0.55);
+      spawnRing(player.position.x, player.position.z, 3, 52, 0xffe9b8, 0.42);
+      shake = Math.max(shake, 0.45);
+      showToast('月华连斩 ×10 · 刃气成环');
+    } else if (c > 10 && c % 5 === 0) {
+      spawnFloater(player.position.x, GROUND + 100, player.position.z, '连斩 ×' + c, '#ffd98a');
+      spawnRing(player.position.x, player.position.z, 4, 58, 0xffd98a, 0.4);
+    }
+  }
+
+  function comboBreak(oldN) {
+    el.combo.classList.remove('show');
+    if (oldN >= 5) {
+      spawnFloater(player.position.x, GROUND + 88, player.position.z, '收刃 · 断于 ×' + oldN, '#9aa7b4');
+      spawnRing(player.position.x, player.position.z, 4, 30, 0x6f8496, 0.3);
+    }
   }
 
   function comboShow() {
@@ -5462,7 +5485,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
         removeShot(shy);
       }
     }
-    spawnRing(player.position.x + Math.sin(yaw) * 30, player.position.z + Math.cos(yaw) * 30, 4, 17, state.changming ? 0xffe6a8 : (state.blade >= 72 ? 0xc9a8ff : 0xffe9b8), 0.42);
+    spawnRing(player.position.x + Math.sin(yaw) * 30, player.position.z + Math.cos(yaw) * 30, 4, 17, (state.combo >= 7 ? 0xc9a8ff : (state.changming ? 0xffe6a8 : (state.blade >= 72 ? 0xd9b6ff : 0xffe9b8))), 0.42);
 
     var tType = '', tObj = null, tD = 1e9;
     for (var i = 0; i < monsterObjs.length; i++) {
@@ -14210,7 +14233,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     if (state.atkCd > 0) state.atkCd -= dt;
     if (state.comboT > 0) {
       state.comboT -= dt;
-      if (state.comboT <= 0) state.combo = 0;
+      if (state.comboT <= 0) { var __cn = state.combo; state.combo = 0; comboBreak(__cn); }
     }
     comboShow();
 
