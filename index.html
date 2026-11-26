@@ -396,7 +396,7 @@
 <div id="bigMoonCss"></div>
 <div id="miniWrap">
   <canvas id="mini" width="170" height="124"></canvas>
-  <div id="miniTip">小地图</div>
+  <div id="miniTip">小地图 · 箭头为朝向</div>
 </div>
 <div id="phaseTag">昼 · 午时</div>
 <div id="questTag">灵鹿引路 · 1 / 5 · 循鹿影寻访五处地标</div>
@@ -4861,7 +4861,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.255';
+  var GAME_VER = 'v1.256';
   var state = { combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -15099,10 +15099,43 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
       }
     }
 
-    mctx.fillStyle = '#ffffff';
+    var px = cx + player.position.x * sc, py = cy + player.position.z * sc;
+
+    // 相机视锥（淡淡一层，表示此刻正看向哪边）
+    var vdx = -Math.sin(camYaw), vdz = -Math.cos(camYaw);
+    var va = Math.atan2(vdz, vdx);
+    var g = mctx.createRadialGradient(px, py, 2, px, py, 26);
+    g.addColorStop(0, 'rgba(255,220,150,0.22)');
+    g.addColorStop(1, 'rgba(255,220,150,0)');
+    mctx.fillStyle = g;
     mctx.beginPath();
-    mctx.arc(cx + player.position.x * sc, cy + player.position.z * sc, 3.4, 0, Math.PI * 2);
+    mctx.moveTo(px, py);
+    mctx.arc(px, py, 26, va - 0.5, va + 0.5);
+    mctx.closePath();
     mctx.fill();
+
+    // 玩家朝向箭头
+    var hdx = Math.sin(player.rotation.y), hdz = Math.cos(player.rotation.y);
+    mctx.fillStyle = '#fff6df';
+    mctx.beginPath();
+    mctx.moveTo(px + hdx * 9.5, py + hdz * 9.5);
+    mctx.lineTo(px - hdx * 2.5 + hdz * 3.6, py - hdz * 2.5 - hdx * 3.6);
+    mctx.lineTo(px - hdx * 2.5 - hdz * 3.6, py - hdz * 2.5 + hdx * 3.6);
+    mctx.closePath();
+    mctx.fill();
+    mctx.beginPath();
+    mctx.arc(px, py, 2.6, 0, Math.PI * 2);
+    mctx.fillStyle = '#3a2c12';
+    mctx.fill();
+
+    // 方位字（北 = 屏幕上方 = -Z）
+    mctx.font = '8px "Microsoft YaHei", sans-serif';
+    mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
+    mctx.fillStyle = 'rgba(232,192,122,0.7)';
+    mctx.fillText('北', cx, 7);
+    mctx.fillText('南', cx, h - 7);
+    mctx.fillText('东', w - 7, cy);
+    mctx.fillText('西', 7, cy);
   }
 
   // ---------- 主循环 ----------
