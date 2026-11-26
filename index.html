@@ -540,6 +540,7 @@ body.photo #lumenVoice, body.photo #miniWrap, body.photo #guide { display:none !
 <div class="optRow"><span>卡面夜态</span><button class="btn" id="optNight">显示</button></div>
 <div class="optRow"><span>开卷回停</span><button class="btn" id="optJumpBack">开</button></div>
     <div class="optRow"><span>停留记点</span><button class="btn" id="optLinger">开</button></div>
+    <div class="optRow"><span>按键</span><button class="btn" id="optKeys">改键</button></div>
     <div class="rankBox" id="rankBox">
       <div class="rankTitle" id="rankTitle">守岛人 · 未受封</div>
       <div class="rankNote" id="rankNote"></div>
@@ -551,6 +552,24 @@ body.photo #lumenVoice, body.photo #miniWrap, body.photo #guide { display:none !
       <div style="margin-top:9px"><button class="btn" id="rankAlbumBtn" style="width:100%">岛传画册 · 七页可翻（导出 HTML）</button></div>
     </div>
     <div class="btns"><button class="btn" id="optClose">返回</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="keysDlg">
+  <div class="card">
+    <h2>改键</h2>
+    <div class="sub">KEYS — 点一行再按新键；Esc 取消</div>
+    <div class="optRow"><span>前进</span><button class="btn" id="kUp">W</button></div>
+    <div class="optRow"><span>后退</span><button class="btn" id="kDown">S</button></div>
+    <div class="optRow"><span>左走</span><button class="btn" id="kLeft">A</button></div>
+    <div class="optRow"><span>右走</span><button class="btn" id="kRight">D</button></div>
+    <div class="optRow"><span>挥刃（键盘备用）</span><button class="btn" id="kAtk">J</button></div>
+    <div class="optRow"><span>灵鹿冲刺</span><button class="btn" id="kDash">G</button></div>
+    <div class="btns">
+      <button class="btn" id="keysReset">恢复默认</button>
+      <button class="btn primary" id="keysClose">关闭</button>
+    </div>
+    <div class="mmKeys" style="margin-top:8px">鼠标左键始终可挥刃，不受改键影响；方向键也始终可走位。</div>
   </div>
 </div>
 
@@ -4834,7 +4853,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.252';
+  var GAME_VER = 'v1.253';
   var state = { hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -4847,7 +4866,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     if (islePhoto) {
       if (k === '1' || k === '2' || k === '3') { e.preventDefault(); islePhotoPreset(k); return; }
       if (k === 'f') { e.preventDefault(); islePhotoSave(); return; }
-      if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'arrowup' || k === 'arrowdown' || k === 'arrowleft' || k === 'arrowright' || k === ' ') {
+      if (k === KEYMAP.up || k === KEYMAP.down || k === KEYMAP.left || k === KEYMAP.right || k === 'arrowup' || k === 'arrowdown' || k === 'arrowleft' || k === 'arrowright' || k === ' ') {
         islePhotoToggle(false);
       } else { return; }
     }
@@ -4859,11 +4878,11 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     }
     if (k === 'b' && !state.paused) openBag();
     if (k === 'v') { if (codexDlg && codexDlg.classList.contains('show')) closeCodex(); else if (!state.paused) openCodex(); }
-    if (k === 'j' || k === 'f') { if (!state.paused) attack(); }
+    if (k === KEYMAP.atk || k === 'f') { if (!state.paused) attack(); }
     if (k === 'q' && !state.paused) castMoonGuard();
     if (k === 'r' && !state.paused) castMoonCall();
     if (k === 'm' && !state.paused) toggleMute();
-    if (k === 'g' && !state.paused) lumenDash();
+    if (k === KEYMAP.dash && !state.paused) lumenDash();
     if (k === 'tab') { e.preventDefault(); if (!state.paused) toggleHero(); }
     var alOvK = document.getElementById('album');
     if (alOvK && alOvK.classList.contains('show')) {
@@ -7245,7 +7264,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   // ---------- 灵鹿引路：主线任务链 + 灵鹿踏月助战 ----------
   // ---------- 设定（独立存放，不随存档清空） ----------
   var OPT_KEY = 'nanhai_isle_opts_v1';
-  var OPT = { beast: 'normal', floaters: true, shake: true, cam: 350, vol: 70, lowfx: false, night: true, jumpback: true, linger: true };
+  var OPT = { beast: 'normal', floaters: true, shake: true, cam: 350, vol: 70, lowfx: false, night: true, jumpback: true, linger: true, keys: null };
 
   function loadOpts() {
     try {
@@ -7261,12 +7280,79 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
       if (typeof j.night === 'boolean') OPT.night = j.night;
       if (typeof j.jumpback === 'boolean') OPT.jumpback = j.jumpback;
       if (typeof j.linger === 'boolean') OPT.linger = j.linger;
+      if (j.keys && typeof j.keys === 'object') {
+        for (var kk in KEYDEF) {
+          if (typeof j.keys[kk] === 'string' && j.keys[kk].length >= 1 && j.keys[kk].length <= 6) KEYMAP[kk] = j.keys[kk];
+        }
+      }
     } catch (e) {}
   }
 
   function saveOpts() {
+    try { OPT.keys = { up: KEYMAP.up, down: KEYMAP.down, left: KEYMAP.left, right: KEYMAP.right, atk: KEYMAP.atk, dash: KEYMAP.dash }; } catch (e) {}
     try { localStorage.setItem(OPT_KEY, JSON.stringify(OPT)); } catch (e) {}
   }
+
+  var KEYDEF = { up: 'w', down: 's', left: 'a', right: 'd', atk: 'j', dash: 'g' };
+  var KEYMAP = { up: 'w', down: 's', left: 'a', right: 'd', atk: 'j', dash: 'g' };
+  function kmKeyName(k) {
+    if (!k) return '';
+    if (k === ' ') return '空格';
+    return k.length === 1 ? k.toUpperCase() : k;
+  }
+  function kmSync() {
+    var map = { kUp: 'up', kDown: 'down', kLeft: 'left', kRight: 'right', kAtk: 'atk', kDash: 'dash' };
+    for (var id in map) {
+      var b = document.getElementById(id);
+      if (b) b.textContent = kmKeyName(KEYMAP[map[id]]);
+    }
+  }
+  var keyCapture = null;
+  window.addEventListener('keydown', function (e) {
+    if (!keyCapture) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    var k = (e.key || '').toLowerCase();
+    if (k === 'escape' || k === 'esc') { keyCapture = null; kmSync(); showToast('改键已取消'); return; }
+    if (k === 'shift' || k === 'control' || k === 'alt' || k === 'meta' || k.length !== 1) { return; }
+    KEYMAP[keyCapture] = k;
+    keyCapture = null;
+    saveOpts();
+    kmSync();
+    showToast('已改为 ' + kmKeyName(k));
+  }, true);
+  function kmOpen() {
+    kmSync();
+    var d = document.getElementById('keysDlg');
+    if (d) d.classList.add('show');
+  }
+  function kmClose() {
+    keyCapture = null;
+    var d = document.getElementById('keysDlg');
+    if (d) d.classList.remove('show');
+  }
+
+  var kmBtn = document.getElementById('optKeys');
+  if (kmBtn) kmBtn.addEventListener('click', function () { kmOpen(); });
+  var kmCloseBtn = document.getElementById('keysClose');
+  if (kmCloseBtn) kmCloseBtn.addEventListener('click', kmClose);
+  var kmResetBtn = document.getElementById('keysReset');
+  if (kmResetBtn) kmResetBtn.addEventListener('click', function () {
+    for (var rk in KEYDEF) KEYMAP[rk] = KEYDEF[rk];
+    keyCapture = null; saveOpts(); kmSync(); showToast('键位已恢复默认');
+  });
+  (function () {
+    var map = { kUp: 'up', kDown: 'down', kLeft: 'left', kRight: 'right', kAtk: 'atk', kDash: 'dash' };
+    for (var id in map) {
+      var b = document.getElementById(id);
+      if (!b) continue;
+      (function (slot, btn) {
+        btn.addEventListener('click', function () {
+          keyCapture = slot;
+          btn.textContent = '按一个键…';
+        });
+      })(map[id], b);
+    }
+  })();
 
   function syncOptBtns() {
     var b = document.getElementById('optBeast');
@@ -14188,10 +14274,10 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     var rgtX = -fwdZ, rgtZ = fwdX;
     var mx = 0, mz = 0;
     if (sealTour.on) { keys['w'] = keys['s'] = keys['a'] = keys['d'] = false; }
-    if (keys['w'] || keys['arrowup'])    { mx += fwdX; mz += fwdZ; }
-    if (keys['s'] || keys['arrowdown'])  { mx -= fwdX; mz -= fwdZ; }
-    if (keys['d'] || keys['arrowright']) { mx += rgtX; mz += rgtZ; }
-    if (keys['a'] || keys['arrowleft'])  { mx -= rgtX; mz -= rgtZ; }
+    if (keys[KEYMAP.up] || keys['arrowup'])    { mx += fwdX; mz += fwdZ; }
+    if (keys[KEYMAP.down] || keys['arrowdown'])  { mx -= fwdX; mz -= fwdZ; }
+    if (keys[KEYMAP.right] || keys['arrowright']) { mx += rgtX; mz += rgtZ; }
+    if (keys[KEYMAP.left] || keys['arrowleft'])  { mx -= rgtX; mz -= rgtZ; }
     var movingNow = !!(mx || mz);
 
     if (mx || mz) {
