@@ -112,6 +112,10 @@
   body.touchui #tjoy { z-index: 12; }
   body.touchui #tjoy { display: none; }
   body.touchui.joying #tjoy { display: block; }
+  body.touchui #tbtns { transition: opacity .18s ease; }
+  body.touchui.joying #tbtns { opacity: .3; }
+  body.touchui.joying #guideBox { opacity: .16; }
+  body.touchui #guideBox { transition: opacity .18s ease; }
   #miniTip { font-size: 10.5px; color: rgba(240,223,174,.55); text-align: right; margin-top: 5px; letter-spacing: 1px; }
   #phaseTag {
     position: absolute; top: 236px; right: 24px; z-index: 5;
@@ -4984,7 +4988,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.278';
+  var GAME_VER = 'v1.280';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -5076,6 +5080,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   var joyTouch = null, rotTouch = null;
   var pinchStart = 0, pinchCam0 = 0;
   var photoSlot = 0;
+  var touchHold = { arm: false, t0: 0, fired: false };
   var tjoyEl = document.getElementById('tjoy');
   var tjoyKnob = document.getElementById('tjoyKnob');
 
@@ -5083,7 +5088,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     if (document.body.classList.contains('touchui')) return;
     document.body.classList.add('touchui');
     var mk = document.querySelector('#mainMenu .mmKeys');
-    if (mk) mk.textContent = '左半屏按住拖 = 走位 · 右半屏拖 = 转视角 · 轻点一下 = 挥刃 · 双指捏合 = 拉近拉远 · 右下按钮：交互/冲刺/护体/召月/旅图/妖兽志';
+    if (mk) mk.textContent = '左半屏按住拖 = 走位 · 右半屏轻点或按住 = 挥刃/连挥 · 右半屏拖 = 转视角 · 双指捏合 = 拉近拉远 · 右下按钮：交互/冲刺/护体/召月/旅图/妖兽志';
   }
 
   function joyMoveTo(cx, cy) {
@@ -5113,6 +5118,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     }
     if (!rotTouch) {
       rotTouch = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false };
+      if (!islePhoto) { touchHold.arm = true; touchHold.t0 = performance.now(); touchHold.fired = false; }
       return;
     }
     // 第二根手指：捏合缩放
@@ -5134,7 +5140,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     if (rotTouch && e.pointerId === rotTouch.id) {
       var dx = e.clientX - rotTouch.x, dy = e.clientY - rotTouch.y;
       rotTouch.x = e.clientX; rotTouch.y = e.clientY;
-      if (Math.hypot(e.clientX - rotTouch.x0, e.clientY - rotTouch.y0) > 8) rotTouch.moved = true;
+      if (Math.hypot(e.clientX - rotTouch.x0, e.clientY - rotTouch.y0) > 8) { rotTouch.moved = true; touchHold.arm = false; }
       camYaw -= dx * 0.0075;
       camPitch = Math.max(0.12, Math.min(1.32, camPitch + dy * 0.004));
       return;
@@ -5161,8 +5167,9 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
           var ni = (photoSlot + 1) % 3;
           photoSlot = ni;
           islePhotoPreset(slots[ni]);
-        } else if (!state.paused) attack();
+        } else if (!state.paused && !touchHold.fired) attack();
       }
+      touchHold.arm = false; touchHold.fired = false;
       rotTouch = null;
       pinchStart = 0;
     }
@@ -7082,7 +7089,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
 
   function updateBladeTip() {
     var tip = document.getElementById('vitalTip');
-    if (tip) tip.textContent = '· ' + (document.body.classList.contains('touchui') ? '轻点屏幕' : '左键/J') + ' 挥刃 ' + state.blade + (state.changming ? ' · 月华长明' : '') + (state.patrolDone ? ' · 守岛有成' : '') + (state.islandLord ? ' · 护体 Q · 召月 R · 金印' : '');
+    if (tip) tip.textContent = '· ' + (document.body.classList.contains('touchui') ? '按住连挥' : '左键/J') + ' 挥刃 ' + state.blade + (state.changming ? ' · 月华长明' : '') + (state.patrolDone ? ' · 守岛有成' : '') + (state.islandLord ? ' · 护体 Q · 召月 R · 金印' : '');
     if (state.blade >= moonGate() && !state.guardShown) {
       state.guardShown = true;
       showToast('刃阶 Ⅴ · 守岛 · 月华护体开启（受击 -20%、挥刃带刃气）');
@@ -14597,6 +14604,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
 
     // 按住左键连挥（拖动转视角时不连挥）
     if (mouseHeld && holdArm && performance.now() - holdT0 > 260 && !state.paused && !islePhoto && !sealTour.on && state.atkCd <= 0) attack();
+    if (touchHold.arm && performance.now() - touchHold.t0 > 260 && !state.paused && !islePhoto && !sealTour.on && !cine.on && !szOn && state.atkCd <= 0) { attack(); touchHold.fired = true; }
 
     // 移动（相对相机）
     var fwdX = -Math.sin(camYaw), fwdZ = -Math.cos(camYaw);
