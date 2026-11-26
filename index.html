@@ -5037,7 +5037,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.297';
+  var GAME_VER = 'v1.298';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -5560,7 +5560,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
 
   // ---------- 背景音乐：五声音阶拨弦，昼夜两调 + 战斗急板 ----------
   var bgmOn = false, bgmGain = null, bgmT = 0, bgmStep = 0, bgmMode = 'day';
-  var bgmBus = null, bgmWet = null, bgmConv = null, bgmFluteT = 0, bgmFluteArmed = false;
+  var bgmBus = null, bgmWet = null, bgmConv = null, bgmFluteT = 0, bgmFluteArmed = false, bgmWetV = 0.34;
   var BGM_BASE = 220;
   var BGM_PATS = {
     day: [[0, 4, 7, 4], [0, 2, 4, 2], [7, 9, 4, 2], [0, 4, 9, 7]],
@@ -5669,6 +5669,20 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     var calm = state.paused || islePhoto || sealTour.on || state.ended || cine.on;
     var target = calm ? 0.012 : (_eco ? 0.045 : (combat ? 0.15 : (night ? 0.11 : 0.12)));
     try { bgmGain.gain.value += (target - bgmGain.gain.value) * Math.min(1, dt * 0.5); } catch (eBG) { }
+    // 地标邻近：越靠近，混响越浓（站在石壁/屋檐下那种包裹感）
+    var prox = 0;
+    try {
+      for (var li = 0; li < LANDMARKS.length; li++) {
+        var lmk = LANDMARKS[li];
+        var dd = Math.hypot(player.position.x - lmk.wx, player.position.z - lmk.wz);
+        var q = 1 - Math.min(1, dd / 170);
+        if (q > prox) prox = q;
+      }
+    } catch (ePX) { prox = 0; }
+    bgmWetV = 0.34 + 0.46 * prox;
+    if (bgmWet) {
+      try { bgmWet.gain.value += (bgmWetV - bgmWet.gain.value) * Math.min(1, dt * 1.1); } catch (eWX) { }
+    }
     if (calm) { bgmT = 0.5; return; }
     if (mode === 'night' && !_eco) {
       bgmFluteT -= dt;
