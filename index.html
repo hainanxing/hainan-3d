@@ -5037,7 +5037,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.298';
+  var GAME_VER = 'v1.299';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -5495,7 +5495,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 氛围音床：海潮 / 鸟鸣 / 长明低吟 / 战斗鼓 ----------
-  var ambOn = false, ambSea = null, ambPadGain = null, ambBirdT = 0, ambDrumT = 0, ambMasterGain = null;
+  var ambOn = false, ambSea = null, ambShore = null, ambPadGain = null, ambBirdT = 0, ambDrumT = 0, ambMasterGain = null;
 
   function toggleMute() {
     if (!ambOn) ambStart();
@@ -5534,6 +5534,20 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       ambSea.gain.value = 0.16;
       src.connect(lp); lp.connect(ambSea); ambSea.connect(master);
       src.start();
+
+      // 贴岸浅浪：更亮的一层噪声，靠近海岸才抬起来
+      var src2 = ac.createBufferSource();
+      src2.buffer = buf;
+      src2.loop = true;
+      var bp = ac.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 1450;
+      bp.Q.value = 0.72;
+      var sh = ac.createGain();
+      sh.gain.value = 0.0;
+      src2.connect(bp); bp.connect(sh); sh.connect(master);
+      src2.start();
+      ambShore = sh;
 
       var padG = ac.createGain();
       padG.gain.value = 0.0;
@@ -5705,6 +5719,65 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     bgmT = step * (Math.random() < 0.16 ? 1.7 : 1);
   }
 
+  // ---------- 脚步：草地 / 石阶 / 沙礁 / 木栈道 ----------
+  function footGain() { return ambMasterGain || null; }
+  function footNoise(dur, f0, f1, gainv, type) {
+    var ac = audio();
+    if (!ac) return;
+    var dst = footGain() || ac.destination;
+    try {
+      var n = Math.max(1, Math.floor(ac.sampleRate * dur));
+      var buf = ac.createBuffer(1, n, ac.sampleRate);
+      var data = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 1.6);
+      var src = ac.createBufferSource();
+      src.buffer = buf;
+      var flt = ac.createBiquadFilter();
+      flt.type = type || 'lowpass';
+      flt.frequency.setValueAtTime(f0, ac.currentTime);
+      flt.frequency.exponentialRampToValueAtTime(Math.max(80, f1), ac.currentTime + dur);
+      var g = ac.createGain();
+      g.gain.value = gainv;
+      src.connect(flt); flt.connect(g); g.connect(dst);
+      src.start();
+    } catch (eFN) { }
+  }
+
+  function footTone(freq, dur, gainv) {
+    var ac = audio();
+    if (!ac) return;
+    var dst = footGain() || ac.destination;
+    try {
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq, ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(Math.max(50, freq * 0.62), ac.currentTime + dur);
+      g.gain.setValueAtTime(gainv, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+      o.connect(g); g.connect(dst);
+      o.start(); o.stop(ac.currentTime + dur + 0.02);
+    } catch (eFT) { }
+  }
+
+  function footStep(kind) {
+    if (state.muted) return;
+    if (kind === 'wood') { footNoise(0.06, 1500, 620, 0.035); footTone(148, 0.10, 0.075); }
+    else if (kind === 'stone') { footNoise(0.055, 2600, 1000, 0.055); footTone(118, 0.06, 0.035); }
+    else if (kind === 'sand') { footNoise(0.11, 1050, 420, 0.045); }
+    else { footNoise(0.10, 780, 300, 0.038); }
+  }
+
+  function surfaceKind() {
+    if (state.onTerrace) return 'wood';
+    var rr = Math.hypot(player.position.x, player.position.z);
+    if (rr > ISLE_R * 0.80) return 'sand';
+    for (var i = 0; i < LANDMARKS.length; i++) {
+      var lmk = LANDMARKS[i];
+      if (Math.hypot(player.position.x - lmk.wx, player.position.z - lmk.wz) < 82) return 'stone';
+    }
+    return 'grass';
+  }
+
   function ambChirp() {
     var ac = audio();
     if (!ac || ac.state !== 'running') return;
@@ -5728,6 +5801,9 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     var night = isNightNow();
     var combat = (BOSS.active && !BOSS.dead) || state.terraceTrial;
     var seaT = night ? 0.10 : 0.17;
+    var rr = Math.hypot(player.position.x, player.position.z);
+    var shoreF = Math.max(0, Math.min(1, (rr - ISLE_R * 0.72) / (ISLE_R * 0.26)));
+    if (ambShore) ambShore.gain.value += ((night ? 0.045 : 0.062) * shoreF - ambShore.gain.value) * Math.min(1, dt * 0.8);
     var padT = state.changmingEnd ? 0.135 : (night ? 0.075 : 0.012);
     if (ambSea) ambSea.gain.value += (seaT - ambSea.gain.value) * Math.min(1, dt * 0.7);
     if (ambPadGain) ambPadGain.gain.value += (padT - ambPadGain.gain.value) * Math.min(1, dt * 0.5);
@@ -14902,6 +14978,11 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     // 角色动作（程序化）
     state.walkAmt += ((movingNow ? 1 : 0) - state.walkAmt) * Math.min(1, dt * 9);
     if (state.walkAmt > 0.02) state.walkPhase += dt * 11.5;
+    var stepPh = Math.floor(state.walkPhase / Math.PI);
+    if (movingNow && state.walkAmt > 0.45 && stepPh !== state.stepPh) {
+      if (typeof footStep === 'function') footStep(surfaceKind());
+      state.stepPh = stepPh;
+    }
     var sw = Math.sin(state.walkPhase) * 0.5 * state.walkAmt;
 
     if (playerParts.legL) playerParts.legL.rotation.x = sw;
