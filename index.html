@@ -90,6 +90,24 @@
     background: rgba(8,28,40,.62); border: 1px solid rgba(232,192,122,.42); backdrop-filter: blur(4px); }
   #tbtns button:active { background: rgba(240,223,174,.28); }
   body.touchui #tjoy, body.touchui #tbtns { display: grid; }
+  body.touchui .btn { min-height: 46px; font-size: 14px; }
+  body.touchui .card .btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; }
+  body.touchui .optRow .btn { min-width: 0; width: 100%; }
+  body.touchui .miniBtn { min-height: 34px; }
+  body.touchui #tbtns button { width: 66px; height: 46px; font-size: 12.5px; }
+  @media (max-width: 640px) {
+    .card { width: 96vw; max-width: 96vw; padding: 18px 15px 20px; max-height: 92vh; }
+    .card h2 { font-size: 17px; }
+    .card p.desc { font-size: 13px; line-height: 1.9; }
+    .btn { min-height: 46px; font-size: 14px; padding: 10px 8px; width: 100%; }
+    .card .btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; }
+    .optRow { font-size: 11.5px; gap: 8px; }
+    .optRow .btn { min-width: 0; width: 100%; }
+    #btnWrap { top: 150px; right: 10px; flex-wrap: wrap; max-width: 52vw; justify-content: flex-end; }
+    .miniBtn { padding: 6px 9px; }
+    #miniWrap { transform: scale(.84); transform-origin: top right; }
+    .mmKeys { font-size: 10.5px; margin-top: 10px; }
+  }
   body.touchui #guideBox { bottom: 214px; }
   body.touchui #tjoy { z-index: 12; }
   body.touchui #tjoy { display: none; }
@@ -4939,7 +4957,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.268';
+  var GAME_VER = 'v1.271';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -5035,7 +5053,10 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   var tjoyKnob = document.getElementById('tjoyKnob');
 
   function touchStartUI() {
-    if (!document.body.classList.contains('touchui')) document.body.classList.add('touchui');
+    if (document.body.classList.contains('touchui')) return;
+    document.body.classList.add('touchui');
+    var mk = document.querySelector('#mainMenu .mmKeys');
+    if (mk) mk.textContent = '左半屏按住拖 = 走位 · 右半屏拖 = 转视角 · 轻点一下 = 挥刃 · 双指捏合 = 拉近拉远 · 右下按钮：交互/冲刺/护体/召月/旅图/妖兽志';
   }
 
   function joyMoveTo(cx, cy) {
@@ -15553,6 +15574,10 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   enableShadows();
   bindPointer();
   bindTouchPad();
+  try {
+    var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (coarse || window.innerWidth <= 640 || (navigator.maxTouchPoints || 0) > 0) touchStartUI();
+  } catch (e) { }
   loadOpts();
   applyOpts();
   var __loaded = applySave();
