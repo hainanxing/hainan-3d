@@ -486,7 +486,7 @@ body.photo #lumenVoice, body.photo #miniWrap, body.photo #guide { display:none !
       <button class="btn" id="mmOpts">设定</button>
       <button class="btn" id="mmAbout">关于</button>
     </div>
-    <div class="mmKeys">WASD 行走 · 鼠标左键挥刃 · G 灵鹿冲刺 · E 交互 · Q 满月护体 · R 召月 · V 妖兽志 · Tab 换人 · B 行囊 · M 静音 · Esc 关闭面板</div>
+    <div class="mmKeys">WASD 行走 · 左键单击/按住挥刃 · G 灵鹿冲刺 · E 交互 · Q 满月护体 · R 召月 · V 妖兽志 · Tab 换人 · B 行囊 · M 静音 · Esc 关闭面板</div>
   </div>
 </div>
 
@@ -496,7 +496,7 @@ body.photo #lumenVoice, body.photo #miniWrap, body.photo #guide { display:none !
     <div class="sub">HELP — 一页看完怎么玩</div>
     <p class="desc"><b>目标</b>　走遍南海仙岛，集齐五件信物、读满守岛录，再去鹿回头仙山见月神之鹿。</p>
     <div class="optRow"><span>走位</span><span style="opacity:.82">W 前进 · S 后退 · A 左走 · D 右走（方向键同）· 鼠标拖拽转视角 · 滚轮调远近</span></div>
-    <div class="optRow"><span>挥刃</span><span style="opacity:.82">鼠标左键（单击即挥刃，拖动仍是转视角；J 亦可）　·　冲刺 G　·　交互 E　·　护体 Q　·　召月 R</span></div>
+    <div class="optRow"><span>挥刃</span><span style="opacity:.82">鼠标左键（单击或按住连挥；拖动仍是转视角；J 亦可）　·　冲刺 G　·　交互 E　·　护体 Q　·　召月 R</span></div>
     <div class="optRow"><span>面板</span><span style="opacity:.82">V 妖兽志　·　Tab 换人　·　B 行囊　·　M 静音　·　Esc 关闭</span></div>
     <div class="optRow"><span>岛志长图</span><span style="opacity:.82">点右侧竖条上的点回停；导航点一下回停，按住 0.6 秒回卷首</span></div>
     <div class="optRow"><span>摘录卡</span><span style="opacity:.82">卡背能给每节写一句自述（≤28 字），导出 PNG 时一并刻上</span></div>
@@ -4853,7 +4853,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.253';
+  var GAME_VER = 'v1.254';
   var state = { hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -4937,6 +4937,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   // 鼠标环绕（renderer 就绪后绑定指针事件）
   var dragging = false, lastX = 0, lastY = 0;
   var clickX0 = 0, clickY0 = 0, clickT0 = 0, clickArmed = false;
+  var mouseHeld = false, holdArm = false, holdT0 = 0;
   function tryClickAttack(e) {
     if (!clickArmed) return;
     clickArmed = false;
@@ -4947,9 +4948,10 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     if (state.paused || islePhoto || cine.on || szOn || state.ended) return;
     attack();
   }
-  window.addEventListener('pointerup', function () { dragging = false; });
+  window.addEventListener('pointerup', function () { dragging = false; mouseHeld = false; holdArm = false; });
   window.addEventListener('pointermove', function (e) {
     if (!dragging) return;
+    if (mouseHeld && Math.hypot(e.clientX - clickX0, e.clientY - clickY0) > 10) holdArm = false;
     camYaw -= (e.clientX - lastX) * 0.006;
     camPitch = Math.max(0.22, Math.min(1.15, camPitch + (e.clientY - lastY) * 0.004));
     lastX = e.clientX; lastY = e.clientY;
@@ -4961,6 +4963,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       dragging = true; lastX = e.clientX; lastY = e.clientY;
       if (e.button === 0 || e.pointerType === 'touch') {
         clickArmed = true; clickX0 = e.clientX; clickY0 = e.clientY; clickT0 = performance.now();
+        mouseHeld = true; holdArm = true; holdT0 = performance.now();
       }
     });
     renderer.domElement.addEventListener('pointerup', function (e) { tryClickAttack(e); });
@@ -5416,6 +5419,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     state.power -= cost;
     state.atkCd = (state.swift ? 0.36 : 0.42) * ((state.achGift && state.achGift.train) ? 0.94 : 1);
     state.atkAnim = 0.34;
+    if (OPT.shake) shake = Math.max(shake || 0, 0.09);
     sfxSwing();
 
     var yaw = player.rotation.y;
@@ -14268,6 +14272,9 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     updateAltar(dt);
     updateShield(dt);
     updateBladeFx(dt);
+
+    // 按住左键连挥（拖动转视角时不连挥）
+    if (mouseHeld && holdArm && performance.now() - holdT0 > 260 && !state.paused && !islePhoto && !sealTour.on && state.atkCd <= 0) attack();
 
     // 移动（相对相机）
     var fwdX = -Math.sin(camYaw), fwdZ = -Math.cos(camYaw);
