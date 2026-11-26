@@ -5033,7 +5033,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.289';
+  var GAME_VER = 'v1.292';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -14464,6 +14464,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     if (!window.__isleTutInt) window.__isleTutInt = setInterval(function () { try { isleTutTick(); } catch (eTT) { } }, 1200);
     if (!isleHelpSeen()) setTimeout(function () { try { isleHelpOpen(true); } catch (eHO) { } }, 900);
     state.paused = false;
+    setTimeout(function () { try { perfStart(); } catch (ePS) { } }, 300);
     setTimeout(function () { try { gestureHintMaybe(); } catch (eGH2) { } }, 620);
     introVoice();
   }
@@ -15646,8 +15647,61 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     mctx.fillText('西', 7, cy);
   }
 
+  // ---------- 性能自适应：开局 3 秒测帧，低于阈值自动降画质 ----------
+  var PERF = { level: 0, on: false, t0: 0, n: 0 };
+  var PERF_KEY = 'nanhai_isle_perf';
+  function perfApply(level, fps) {
+    if (level <= (PERF.level || 0)) return;
+    PERF.level = level;
+    try { localStorage.setItem(PERF_KEY, String(level)); } catch (eP1) { }
+    try {
+      var base = Math.min(window.devicePixelRatio || 1, 2);
+      renderer.setPixelRatio(base * (level >= 2 ? 0.7 : 0.85));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    } catch (eP2) { }
+    try { if (fireflies && fireflies.geometry) fireflies.geometry.setDrawRange(0, level >= 2 ? 96 : 150); } catch (eP3) { }
+    if (level >= 2) { try { renderer.shadowMap.enabled = false; } catch (eP4) { } }
+    var lb = fps ? ('帧率 ' + Math.round(fps) + ' · ') : '';
+    try { showToast(lb + (level >= 2 ? '已切极简画质保流畅' : '已降低渲染倍率保流畅')); } catch (eP5) { }
+  }
+  function perfStart() { if (PERF.level) return; PERF.on = true; PERF.t0 = performance.now(); PERF.n = 0; }
+  function perfTick(nowT) {
+    if (!PERF.on) return;
+    PERF.n++;
+    var el = nowT - PERF.t0;
+    if (el < 3000) return;
+    PERF.on = false;
+    var fps = PERF.n / (el / 1000);
+    if (fps < 30) perfApply(2, fps); else if (fps < 45) perfApply(1, fps);
+  }
+
+  // ---------- 省电：静置 30 秒 / 切后台 → 30fps，回来即恢复 ----------
+  var ECO_IDLE_MS = 30000, _eco = false, _idleMark = performance.now(), _lastDraw = 0;
+  function setEco(on, msg) {
+    if (_eco === on) return;
+    _eco = on;
+    try { document.body.classList.toggle('eco', on); } catch (eEc) { }
+    if (msg) { try { showToast(msg); } catch (eEt) { } }
+  }
+  function markAct() {
+    _idleMark = performance.now();
+    if (_eco && !document.hidden) setEco(false, '已恢复 · 60fps');
+  }
+  ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel'].forEach(function (evName) {
+    window.addEventListener(evName, markAct, { passive: true });
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { setEco(true, null); }
+    else { _idleMark = performance.now(); setEco(false, '已恢复 · 60fps'); }
+  });
+
   // ---------- 主循环 ----------
   function animate() {
+    var nowT = performance.now();
+    if (!document.hidden && !_eco && nowT - _idleMark > ECO_IDLE_MS && !state.paused) setEco(true, '静置 30 秒 · 已降到 20fps 省电');
+    if (_eco && nowT - _lastDraw < 50) { requestAnimationFrame(animate); return; }
+    _lastDraw = nowT;
+    perfTick(nowT);
     var dt = Math.min(clock.getDelta(), 0.05);
     try {
       update(dt);
@@ -15686,6 +15740,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   buildClouds();
   buildFireflies();
   enableShadows();
+  try { var pv0 = parseInt(localStorage.getItem(PERF_KEY) || '0', 10); if (pv0) perfApply(pv0, 0); } catch (eP0) { }
   bindPointer();
   bindTouchPad();
   try {
