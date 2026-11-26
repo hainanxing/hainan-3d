@@ -665,6 +665,7 @@ body.photo #lumenVoice, body.photo #miniWrap, body.photo #guide { display:none !
     <div class="optRow"><span>震屏</span><button class="btn" id="optShake">开启</button></div>
     <div class="optRow"><span>镜头距离</span><button class="btn" id="optCam">中（350）</button></div>
     <div class="optRow"><span>音量</span><button class="btn" id="optVol">70 / 100</button></div>
+    <div class="optRow"><span>背景音乐</span><button class="btn" id="optBgm">开</button></div>
     <div class="optRow"><span>画质</span><button class="btn" id="optQual">自动</button></div>
     <div class="optRow"><span>省电画质</span><button class="btn" id="optFx">关</button></div>
 <div class="optRow"><span>卡面夜态</span><button class="btn" id="optNight">显示</button></div>
@@ -5036,7 +5037,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.294';
+  var GAME_VER = 'v1.295';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -5490,6 +5491,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     var ac = audio();
     if (ac && ac.state === 'suspended') ac.resume();
     ambStart();
+    try { bgmStart(); } catch (eBG0) { }
   }
 
   // ---------- 氛围音床：海潮 / 鸟鸣 / 长明低吟 / 战斗鼓 ----------
@@ -5554,6 +5556,74 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
         o.start(); lfo.start();
       }
     } catch (e) { ambOn = false; }
+  }
+
+  // ---------- 背景音乐：五声音阶拨弦，昼夜两调 + 战斗急板 ----------
+  var bgmOn = false, bgmGain = null, bgmT = 0, bgmStep = 0, bgmMode = 'day';
+  var BGM_BASE = 220;
+  var BGM_PATS = {
+    day: [[0, 4, 7, 4], [0, 2, 4, 2], [7, 9, 4, 2], [0, 4, 9, 7]],
+    night: [[0, 3, 5, 3], [5, 7, 3, 0], [0, 5, 10, 7], [3, 0, -2, 0]],
+    combat: [[0, 7, 4, 9], [7, 2, 9, 4], [0, 0, 7, 7]]
+  };
+
+  function bgmNote(semi, dur, gainv) {
+    var ac = audio();
+    if (!ac || !bgmGain) return;
+    try {
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'triangle';
+      var f = BGM_BASE * Math.pow(2, semi / 12);
+      o.frequency.setValueAtTime(f, ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(Math.max(60, f * 0.86), ac.currentTime + dur * 0.9);
+      g.gain.setValueAtTime(0.0001, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(gainv, ac.currentTime + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+      o.connect(g); g.connect(bgmGain);
+      o.start(); o.stop(ac.currentTime + dur + 0.03);
+    } catch (eBN) { }
+  }
+
+  function bgmStart() {
+    if (bgmOn) return;
+    if (OPT.bgm === false) return;
+    var ac = audio();
+    if (!ac) return;
+    if (!ambOn) ambStart();
+    if (!ambMasterGain) return;
+    try {
+      bgmGain = ac.createGain();
+      bgmGain.gain.value = 0.0001;
+      bgmGain.connect(ambMasterGain);
+    } catch (eBS) { bgmOn = false; return; }
+    bgmOn = true; bgmT = 0.25; bgmStep = 0;
+  }
+
+  function bgmStop() {
+    bgmOn = false;
+    try { if (bgmGain) bgmGain.gain.value = 0.0001; } catch (eBQ) { }
+    try { if (bgmGain && bgmGain.disconnect) bgmGain.disconnect(); } catch (eBR) { }
+    bgmGain = null;
+  }
+
+  function updateBgm(dt) {
+    if (!bgmOn || !bgmGain) return;
+    if (OPT.bgm === false) { bgmStop(); return; }
+    var night = isNightNow();
+    var combat = (BOSS.active && !BOSS.dead) || state.terraceTrial;
+    var mode = combat ? 'combat' : (night ? 'night' : 'day');
+    bgmMode = mode;
+    var target = _eco ? 0.045 : (combat ? 0.15 : (night ? 0.11 : 0.12));
+    try { bgmGain.gain.value += (target - bgmGain.gain.value) * Math.min(1, dt * 0.5); } catch (eBG) { }
+    bgmT -= dt;
+    if (bgmT > 0) return;
+    var step = combat ? 0.30 : (night ? 0.62 : 0.52);
+    var list = BGM_PATS[mode] || BGM_PATS.day;
+    var pat = list[Math.floor(bgmStep / 4) % list.length];
+    var semi = pat[bgmStep % 4];
+    bgmNote(semi, step * 0.92, combat ? 0.085 : 0.07);
+    bgmStep = (bgmStep + 1) % 16;
+    bgmT = step * (Math.random() < 0.16 ? 1.7 : 1);
   }
 
   function ambChirp() {
@@ -7672,7 +7742,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   // ---------- 灵鹿引路：主线任务链 + 灵鹿踏月助战 ----------
   // ---------- 设定（独立存放，不随存档清空） ----------
   var OPT_KEY = 'nanhai_isle_opts_v1';
-  var OPT = { beast: 'normal', floaters: true, shake: true, cam: 350, vol: 70, lowfx: false, quality: 'auto', night: true, jumpback: true, linger: true, keys: null };
+  var OPT = { beast: 'normal', floaters: true, shake: true, cam: 350, vol: 70, lowfx: false, quality: 'auto', bgm: true, night: true, jumpback: true, linger: true, keys: null };
 
   function loadOpts() {
     try {
@@ -7771,6 +7841,8 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     if (s) s.textContent = OPT.shake ? '开启' : '关闭';
     var c = document.getElementById('optCam');
     if (c) c.textContent = OPT.cam <= 260 ? ('近（' + OPT.cam + '）') : (OPT.cam >= 460 ? ('远（' + OPT.cam + '）') : ('中（' + OPT.cam + '）'));
+    var bg = document.getElementById('optBgm');
+    if (bg) bg.textContent = OPT.bgm === false ? '关' : '开';
     var v = document.getElementById('optVol');
     if (v) v.textContent = OPT.vol + ' / 100';
     var q = document.getElementById('optQual');
@@ -14505,6 +14577,11 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     ['optFloat', function () { OPT.floaters = !OPT.floaters; }],
     ['optShake', function () { OPT.shake = !OPT.shake; }],
     ['optCam', function () { OPT.cam = OPT.cam <= 260 ? 350 : (OPT.cam < 460 ? 520 : 220); }],
+    ['optBgm', function () {
+      OPT.bgm = (OPT.bgm === false);
+      if (OPT.bgm) { try { bgmStart(); } catch (eB1) { } } else { try { bgmStop(); } catch (eB2) { } }
+      try { saveOpts(); } catch (eB3) { }
+    }],
     ['optVol', function () { OPT.vol = OPT.vol >= 100 ? 0 : (OPT.vol >= 70 ? 100 : (OPT.vol >= 35 ? 70 : 35)); }],
     ['optFx', function () { OPT.lowfx = !OPT.lowfx; }],
     ['optQual', function () {
@@ -14873,6 +14950,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     updateTerraceTrial(dt);
     updateEndless(dt);
     updateAmbience(dt);
+    updateBgm(dt);
     updateQuest(dt);
     updateLumenAssist(dt);
 
