@@ -2043,6 +2043,18 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   function guideTargetInfo() {
+    var lk = state.questLock;
+    if (typeof lk === 'number' && lk >= 0 && LANDMARKS[lk]) {
+      if (LANDMARKS[lk].done) { state.questLock = -1; }
+      else {
+        var lm0 = LANDMARKS[lk];
+        return {
+          name: lm0.name, wx: lm0.wx, wz: lm0.wz,
+          dist: Math.hypot(player.position.x - lm0.wx, player.position.z - lm0.wz),
+          all: false, locked: true
+        };
+      }
+    }
     var best = null, bd = 1e9;
     for (var i = 0; i < LANDMARKS.length; i++) {
       var lm = LANDMARKS[i];
@@ -2069,6 +2081,17 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       };
     }
     return { name: best.name, wx: best.wx, wz: best.wz, dist: bd, all: false };
+  }
+
+  function cycleQuestTarget() {
+    var undone = [];
+    for (var i = 0; i < LANDMARKS.length; i++) { if (!LANDMARKS[i].done) undone.push(i); }
+    if (!undone.length) { state.questLock = -1; showToast('地标都走过了 · 目标交回灵鹿'); return; }
+    var pos = undone.indexOf(state.questLock);
+    state.questLock = (pos === -1) ? undone[0] : undone[(pos + 1) % undone.length];
+    var t = guideTargetInfo();
+    showToast('锁定 · ' + t.name + ' · ' + Math.round(t.dist / 10) + ' 步（再按 T 换）');
+    spawnRing(player.position.x, player.position.z, 3, 26, 0xffd98a, 0.35);
   }
 
   function updateSpirit(dt) {
@@ -4861,8 +4884,8 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.261';
-  var state = { combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
+  var GAME_VER = 'v1.262';
+  var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
   window.addEventListener('keydown', function (e) {
@@ -4889,6 +4912,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     if (k === KEYMAP.atk || k === 'f') { if (!state.paused) attack(); }
     if (k === 'q' && !state.paused) castMoonGuard();
     if (k === 'r' && !state.paused) castMoonCall();
+    if (k === 't' && !state.paused && !szOn) cycleQuestTarget();
     if (k === 'm' && !state.paused) toggleMute();
     if (k === KEYMAP.dash && !state.paused) lumenDash();
     if (k === 'tab') { e.preventDefault(); if (!state.paused) toggleHero(); }
