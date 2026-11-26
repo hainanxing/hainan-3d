@@ -30,6 +30,13 @@
   #powerBar { height: 9px; border-radius: 5px; background: rgba(255,255,255,.14); overflow: hidden; border: 1px solid rgba(232,192,122,.3); }
   #powerFill { height: 100%; width: 100%; background: linear-gradient(90deg,#4fbfd8,#a8e6cf); }
 
+  #comboBox { bottom: 30px; right: 24px; text-align: right; opacity: 0; transform: translateY(8px);
+    transition: opacity .16s ease, transform .16s ease; }
+  #comboBox.show { opacity: 1; transform: none; }
+  #comboBox b { display: block; font-size: 19px; letter-spacing: 2px; color: #ffd98a;
+    text-shadow: 0 0 16px rgba(255,186,80,.8), 0 2px 6px rgba(0,0,0,.6); }
+  #comboBox small { font-size: 11px; opacity: .7; letter-spacing: 1px; }
+
   #vitalWrap { bottom: 62px; left: 24px; width: 210px; }
   #vitalLabel { font-size: 11.5px; opacity: .8; margin-bottom: 6px; letter-spacing: 1px; }
   #vitalTip { color: #e8c07a; opacity: .85; margin-left: 6px; }
@@ -411,6 +418,7 @@
 <div class="hud" id="guide"></div>
 <div id="floaters"></div>
 <div class="hud" id="toast"></div>
+<div class="hud" id="comboBox"><b>月华连斩 ×2</b><small>伤害 ×1.00</small></div>
 <div id="mbWrap"></div>
 <div id="vig"></div>
 <div id="eclipse"></div>
@@ -4853,8 +4861,8 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.254';
-  var state = { hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
+  var GAME_VER = 'v1.255';
+  var state = { combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
   window.addEventListener('keydown', function (e) {
@@ -4978,6 +4986,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   var el = {
     hint: document.getElementById('hint'),
     toast: document.getElementById('toast'),
+    combo: document.getElementById('comboBox'),
     dlg: document.getElementById('dlg'),
     dlgTitle: document.getElementById('dlgTitle'),
     dlgSub: document.getElementById('dlgSub'),
@@ -5411,6 +5420,25 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     }
   }
 
+  function comboAdd() {
+    state.combo = (state.combo || 0) + 1;
+    state.comboT = 2.4;
+  }
+
+  function comboShow() {
+    if (!el.combo) return;
+    var c = state.combo || 0;
+    var on = c >= 2 && !state.paused && !islePhoto && !sealTour.on;
+    if (state._comboOn === on && state._comboN === c) return;
+    state._comboOn = on; state._comboN = c;
+    el.combo.className = on ? 'hud show' : 'hud';
+    if (on) {
+      var mult = 1 + Math.min(4, Math.floor(c / 3)) * 0.15;
+      el.combo.querySelector('b').textContent = '月华连斩 ×' + c;
+      el.combo.querySelector('small').textContent = '伤害 ×' + mult.toFixed(2) + ' · 断连清零';
+    }
+  }
+
   function attack() {
     if (state.paused || state.atkCd > 0 || sealTour.on) return;
     var cost = state.swift ? 10 : 12;
@@ -5484,7 +5512,9 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     }
     if (!tType) { if (state.blade >= moonGate()) moonAoe(null, null); return; }
 
-    var dmg = state.blade || 34;
+    var cMult = 1 + Math.min(4, Math.floor((state.combo || 0) / 3)) * 0.15;
+    var dmg = Math.round((state.blade || 34) * cMult);
+    comboAdd();
     if (state.blade >= moonGate()) moonAoe(tType, tObj, dmg);
 
     if (tType === 'evmin') {
@@ -14178,6 +14208,11 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     if (state.flash > 0) state.flash = Math.max(0, state.flash - dt * 1.6);
     el.hurt.style.opacity = Math.min(1, state.flash) * 0.9;
     if (state.atkCd > 0) state.atkCd -= dt;
+    if (state.comboT > 0) {
+      state.comboT -= dt;
+      if (state.comboT <= 0) state.combo = 0;
+    }
+    comboShow();
 
     // 海面呼吸
     if (sea) {
