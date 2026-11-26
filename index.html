@@ -426,6 +426,8 @@
     #btnWrap { top: 196px; right: 8px; max-width: 50vw; }
     #lumenVoice { left: 10px; right: auto; bottom: 212px; max-width: 58vw; font-size: 11.5px; line-height: 1.62; padding: 8px 11px; }
     #guideBox { bottom: 96px; left: 10px; max-width: 60vw; }
+    .optRow { flex-direction: column; align-items: stretch; gap: 6px; padding: 7px 0; font-size: 11.5px; }
+    .optRow > span:first-child { letter-spacing: .5px; opacity: .92; }
     #guide { bottom: 78px; left: 10px; right: auto; transform: none; max-width: 58vw;
       font-size: 10.5px; padding: 5px 12px; letter-spacing: .6px; }
   }
@@ -663,6 +665,7 @@ body.photo #lumenVoice, body.photo #miniWrap, body.photo #guide { display:none !
     <div class="optRow"><span>震屏</span><button class="btn" id="optShake">开启</button></div>
     <div class="optRow"><span>镜头距离</span><button class="btn" id="optCam">中（350）</button></div>
     <div class="optRow"><span>音量</span><button class="btn" id="optVol">70 / 100</button></div>
+    <div class="optRow"><span>画质</span><button class="btn" id="optQual">自动</button></div>
     <div class="optRow"><span>省电画质</span><button class="btn" id="optFx">关</button></div>
 <div class="optRow"><span>卡面夜态</span><button class="btn" id="optNight">显示</button></div>
 <div class="optRow"><span>开卷回停</span><button class="btn" id="optJumpBack">开</button></div>
@@ -5033,7 +5036,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.292';
+  var GAME_VER = 'v1.294';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -7669,7 +7672,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   // ---------- 灵鹿引路：主线任务链 + 灵鹿踏月助战 ----------
   // ---------- 设定（独立存放，不随存档清空） ----------
   var OPT_KEY = 'nanhai_isle_opts_v1';
-  var OPT = { beast: 'normal', floaters: true, shake: true, cam: 350, vol: 70, lowfx: false, night: true, jumpback: true, linger: true, keys: null };
+  var OPT = { beast: 'normal', floaters: true, shake: true, cam: 350, vol: 70, lowfx: false, quality: 'auto', night: true, jumpback: true, linger: true, keys: null };
 
   function loadOpts() {
     try {
@@ -7770,6 +7773,8 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     if (c) c.textContent = OPT.cam <= 260 ? ('近（' + OPT.cam + '）') : (OPT.cam >= 460 ? ('远（' + OPT.cam + '）') : ('中（' + OPT.cam + '）'));
     var v = document.getElementById('optVol');
     if (v) v.textContent = OPT.vol + ' / 100';
+    var q = document.getElementById('optQual');
+    if (q) q.textContent = OPT.quality === 'smooth' ? '流畅（0.7 倍 · 关阴影）' : (OPT.quality === 'fine' ? '精细（满倍率 · 开阴影）' : '自动（按帧率降档）');
     var x = document.getElementById('optFx');
     if (x) x.textContent = OPT.lowfx ? '开（关阴影 · 隐萤火）' : '关';
     var nt = document.getElementById('optNight');
@@ -12952,6 +12957,10 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   function applyOpts() {
     camDist = OPT.cam;
     if (renderer) renderer.shadowMap.enabled = !OPT.lowfx;
+    try {
+      if (OPT.quality === 'smooth') perfApply(2, 0);
+      else if (OPT.quality === 'fine') perfReset();
+    } catch (eQ6) { }
     if (fireflies) fireflies.visible = !OPT.lowfx;
     if (ambMasterGain) ambMasterGain.gain.value = state.muted ? 0 : (OPT.vol / 100) * 0.6;
     syncOptBtns();
@@ -14498,6 +14507,14 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     ['optCam', function () { OPT.cam = OPT.cam <= 260 ? 350 : (OPT.cam < 460 ? 520 : 220); }],
     ['optVol', function () { OPT.vol = OPT.vol >= 100 ? 0 : (OPT.vol >= 70 ? 100 : (OPT.vol >= 35 ? 70 : 35)); }],
     ['optFx', function () { OPT.lowfx = !OPT.lowfx; }],
+    ['optQual', function () {
+      var nx = OPT.quality === 'auto' ? 'smooth' : (OPT.quality === 'smooth' ? 'fine' : 'auto');
+      OPT.quality = nx;
+      if (nx === 'smooth') { try { perfApply(2, 0); } catch (eQ1) { } }
+      else if (nx === 'fine') { try { perfReset(); } catch (eQ2) { } }
+      else { try { perfReset(); } catch (eQ3) { try { perfStart(); } catch (eQ4) { } } }
+      try { saveOpts(); } catch (eQ5) { }
+    }],
     ['optNight', function () { OPT.night = OPT.night === false; }],
     ['optJumpBack', function () { OPT.jumpback = OPT.jumpback === false; }],
     ['optLinger', function () { OPT.linger = OPT.linger === false; }]
@@ -15650,6 +15667,20 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   // ---------- 性能自适应：开局 3 秒测帧，低于阈值自动降画质 ----------
   var PERF = { level: 0, on: false, t0: 0, n: 0 };
   var PERF_KEY = 'nanhai_isle_perf';
+  function perfReset() {
+    PERF.level = 0; PERF.on = false;
+    try { localStorage.removeItem(PERF_KEY); } catch (eR1) { }
+    try {
+      var base = Math.min(window.devicePixelRatio || 1, 2);
+      renderer.setPixelRatio(base);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    } catch (eR2) { }
+    try { if (fireflies && fireflies.geometry) fireflies.geometry.setDrawRange(0, 240); } catch (eR3) { }
+    try { renderer.shadowMap.enabled = !OPT.lowfx; } catch (eR4) { }
+    try {
+      world.traverse(function (o) { if (o.isMesh && o.material && o.material.needsUpdate !== undefined) o.material.needsUpdate = true; });
+    } catch (eR5) { }
+  }
   function perfApply(level, fps) {
     if (level <= (PERF.level || 0)) return;
     PERF.level = level;
@@ -15660,17 +15691,25 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
       renderer.setSize(window.innerWidth, window.innerHeight);
     } catch (eP2) { }
     try { if (fireflies && fireflies.geometry) fireflies.geometry.setDrawRange(0, level >= 2 ? 96 : 150); } catch (eP3) { }
-    if (level >= 2) { try { renderer.shadowMap.enabled = false; } catch (eP4) { } }
+    if (level >= 2) {
+      try { renderer.shadowMap.enabled = false; } catch (eP4) { }
+      try { world.traverse(function (o) { if (o.isMesh && o.material && o.material.needsUpdate !== undefined) o.material.needsUpdate = true; }); } catch (eP6) { }
+    }
     var lb = fps ? ('帧率 ' + Math.round(fps) + ' · ') : '';
     try { showToast(lb + (level >= 2 ? '已切极简画质保流畅' : '已降低渲染倍率保流畅')); } catch (eP5) { }
   }
-  function perfStart() { if (PERF.level) return; PERF.on = true; PERF.t0 = performance.now(); PERF.n = 0; }
+  function perfStart() {
+    if (PERF.level) return;
+    if (OPT.quality && OPT.quality !== 'auto') return;
+    PERF.on = true; PERF.t0 = performance.now(); PERF.n = 0;
+  }
   function perfTick(nowT) {
     if (!PERF.on) return;
     PERF.n++;
     var el = nowT - PERF.t0;
     if (el < 3000) return;
     PERF.on = false;
+    if (OPT.quality && OPT.quality !== 'auto') return;
     var fps = PERF.n / (el / 1000);
     if (fps < 30) perfApply(2, fps); else if (fps < 45) perfApply(1, fps);
   }
