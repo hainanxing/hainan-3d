@@ -395,6 +395,33 @@
   }
 
   #dbg, #err { display: none; }
+
+  /* 竖屏 HUD 覆盖：写在所有基础规则之后，确保生效 */
+  @media (max-width: 640px) {
+    #titleBox { top: 8px; left: 12px; }
+    #titleBox h1 { font-size: 15.5px; letter-spacing: 2px; }
+    #titleBox p { display: none; }
+    #miniWrap { top: 6px; right: 8px; transform: scale(.62); transform-origin: top right; }
+    #miniTip { font-size: 9px; margin-top: 2px; letter-spacing: .5px; }
+    #vitalWrap { bottom: auto; top: 36px; left: 12px; width: 148px; }
+    #powerWrap { bottom: auto; top: 78px; left: 12px; width: 148px; }
+    #vitalLabel, #powerLabel { font-size: 10px; margin-bottom: 3px; letter-spacing: .5px; }
+    #vitalBar, #powerBar { height: 7px; border-radius: 4px; }
+    #vitalTip { font-size: 9px; }
+    #relicBox { display: none; }
+    #comboBox { bottom: auto; top: 108px; left: 12px; right: auto; text-align: left; }
+    #comboBox b { font-size: 15px; letter-spacing: 1px; }
+    #comboBox small { font-size: 10px; }
+    #questTag { top: 140px; right: 8px; max-width: 54vw; font-size: 10px; padding: 5px 9px; }
+    #phaseTag { top: auto; bottom: 42px; right: 10px; font-size: 10px; padding: 4px 9px; }
+    #vitalTip { display: none; }
+    #vitalLabel, #powerLabel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #btnWrap { top: 196px; right: 8px; max-width: 50vw; }
+    #lumenVoice { left: 10px; right: auto; bottom: 212px; max-width: 58vw; font-size: 11.5px; line-height: 1.62; padding: 8px 11px; }
+    #guideBox { bottom: 96px; left: 10px; max-width: 60vw; }
+    #guide { bottom: 78px; left: 10px; right: auto; transform: none; max-width: 58vw;
+      font-size: 10.5px; padding: 5px 12px; letter-spacing: .6px; }
+  }
 </style>
 </head>
 <body>
@@ -4957,7 +4984,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.271';
+  var GAME_VER = 'v1.278';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -14282,7 +14309,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     box.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:1px">'
       + '<span style="opacity:.62">上手 · ' + n + '/3</span>'
       + '<span data-tutx="1" style="margin-left:auto;cursor:pointer;opacity:.55;font-size:11px;padding:0 2px">✕</span></div>'
-      + rowT(!!(v & 1), 'WASD 走两步')
+      + rowT(!!(v & 1), document.body.classList.contains('touchui') ? '左半屏拖 走两步' : 'WASD 走两步')
       + rowT(!!(v & 2), '走近月神树')
       + rowT(!!(v & 4), document.body.classList.contains('touchui') ? '轻点 退一只妖' : '左键 退一只妖');
     var tx = box.querySelector('[data-tutx]');
@@ -15576,7 +15603,10 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   bindTouchPad();
   try {
     var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-    if (coarse || window.innerWidth <= 640 || (navigator.maxTouchPoints || 0) > 0) touchStartUI();
+    if (coarse || window.innerWidth <= 640 || (navigator.maxTouchPoints || 0) > 0) {
+      touchStartUI();
+      try { isleTutUI(); } catch (e0) { }
+    }
   } catch (e) { }
   loadOpts();
   applyOpts();
