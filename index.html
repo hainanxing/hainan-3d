@@ -4861,7 +4861,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.258';
+  var GAME_VER = 'v1.259';
   var state = { combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -15066,25 +15066,69 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   var mctx = mini.getContext('2d');
   var miniTipEl = document.getElementById('miniTip');
   var miniZoom = 1;
+  var miniPanX = 0, miniPanZ = 0;
+  var miniDrag = null;
 
   function miniTipSync() {
     if (!miniTipEl) return;
-    miniTipEl.textContent = miniZoom > 1.02
-      ? '小地图 ×' + miniZoom.toFixed(1) + ' · 双击回中'
-      : '小地图 · 箭头为朝向';
+    if (miniZoom > 1.02) {
+      miniTipEl.textContent = '小地图 ×' + miniZoom.toFixed(1) + ' · 拖动看岛 · 双击回中';
+    } else if (Math.hypot(miniPanX, miniPanZ) > 6) {
+      miniTipEl.textContent = '小地图 · 已偏移 · 双击回中';
+    } else {
+      miniTipEl.textContent = '小地图 · 箭头为朝向';
+    }
+  }
+
+  function miniRecenter() {
+    miniZoom = 1; miniPanX = 0; miniPanZ = 0;
+    miniTipSync();
   }
 
   mini.addEventListener('wheel', function (e) {
     e.preventDefault(); e.stopPropagation();
+    var was = miniZoom;
     miniZoom = Math.max(1, Math.min(2.4, miniZoom * (e.deltaY > 0 ? 0.92 : 1.08)));
+    if (was <= 1.02 && miniZoom > 1.02) { miniPanX = player.position.x; miniPanZ = player.position.z; }
+    if (miniZoom <= 1.02) { miniPanX = 0; miniPanZ = 0; }
     miniTipSync();
   }, { passive: false });
 
   mini.addEventListener('dblclick', function (e) {
     e.preventDefault(); e.stopPropagation();
-    if (miniZoom > 1.02) { miniZoom = 1; miniTipSync(); showToast('小地图 · 已回到全岛'); }
+    if (miniZoom > 1.02 || Math.hypot(miniPanX, miniPanZ) > 6) {
+      miniRecenter(); showToast('小地图 · 已回到全岛');
+    }
   });
-  mini.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+
+  mini.addEventListener('pointerdown', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    var k = mini.width / mini.getBoundingClientRect().width;
+    miniDrag = { x: e.clientX, y: e.clientY, px: miniPanX, pz: miniPanZ, k: k, moved: false };
+    if (mini.setPointerCapture) { try { mini.setPointerCapture(e.pointerId); } catch (err) { } }
+  });
+
+  mini.addEventListener('pointermove', function (e) {
+    if (!miniDrag) return;
+    e.stopPropagation();
+    var k = miniDrag.k, sc = ((Math.min(mini.width, mini.height) - 26) / (ISLE_R * 1.55)) * miniZoom;
+    var dx = (e.clientX - miniDrag.x) * k, dz = (e.clientY - miniDrag.y) * k;
+    if (Math.hypot(dx, dz) > 2) miniDrag.moved = true;
+    miniPanX = miniDrag.px - dx / sc;
+    miniPanZ = miniDrag.pz - dz / sc;
+    var r = Math.hypot(miniPanX, miniPanZ);
+    if (r > ISLE_R * 1.02) { miniPanX *= ISLE_R * 1.02 / r; miniPanZ *= ISLE_R * 1.02 / r; }
+    miniTipSync();
+  });
+
+  function miniDragEnd(e) {
+    if (!miniDrag) return;
+    e.stopPropagation();
+    miniDrag = null;
+    miniTipSync();
+  }
+  mini.addEventListener('pointerup', miniDragEnd);
+  mini.addEventListener('pointercancel', miniDragEnd);
   function drawMini() {
     var w = mini.width, h = mini.height;
     mctx.clearRect(0, 0, w, h);
@@ -15093,8 +15137,8 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
 
     var base = (Math.min(w, h) - 26) / (ISLE_R * 1.55);
     var sc = base * miniZoom;
-    var cx = w / 2 - player.position.x * (sc - base);
-    var cy = h / 2 - player.position.z * (sc - base);
+    var cx = w / 2 - miniPanX * sc;
+    var cy = h / 2 - miniPanZ * sc;
 
     mctx.save();
     mctx.beginPath();
