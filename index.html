@@ -4861,7 +4861,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.259';
+  var GAME_VER = 'v1.260';
   var state = { combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -15203,6 +15203,34 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
         mctx.beginPath();
         mctx.arc(cx + evMinions[vi2].x * sc, cy + evMinions[vi2].z * sc, 2.6, 0, Math.PI * 2);
         mctx.fill();
+      }
+    }
+
+    // 灵鹿指引目标：看得见就脉冲，看不见就在圈边指方向
+    var qi = islePhoto ? null : guideTargetInfo();
+    if (qi) {
+      var qx = cx + qi.wx * sc, qy = cy + qi.wz * sc;
+      var cr = ISLE_R * base * 1.06, cw = w / 2, chh = h / 2;
+      var off = Math.hypot(qx - cw, qy - chh);
+      if (off <= cr * 0.94) {
+        var pr = 5 + Math.sin(state.t * 4.2) * 1.6;
+        mctx.strokeStyle = 'rgba(255,217,138,.92)';
+        mctx.lineWidth = 1.3;
+        mctx.beginPath(); mctx.arc(qx, qy, pr, 0, Math.PI * 2); mctx.stroke();
+        mctx.fillStyle = 'rgba(255,217,138,.4)';
+        mctx.beginPath(); mctx.arc(qx, qy, 2.2, 0, Math.PI * 2); mctx.fill();
+      } else {
+        var qang = Math.atan2(qy - chh, qx - cw);
+        var axp = cw + Math.cos(qang) * cr * 0.9, ayp = chh + Math.sin(qang) * cr * 0.9;
+        mctx.save();
+        mctx.translate(axp, ayp);
+        mctx.rotate(qang);
+        mctx.fillStyle = 'rgba(255,217,138,.92)';
+        mctx.beginPath();
+        mctx.moveTo(6, 0); mctx.lineTo(-4, 4.2); mctx.lineTo(-4, -4.2);
+        mctx.closePath();
+        mctx.fill();
+        mctx.restore();
       }
     }
 
