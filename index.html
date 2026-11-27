@@ -5037,7 +5037,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.299';
+  var GAME_VER = 'v1.300';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -6793,16 +6793,21 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
 
   // ---------- 月相：每过一夜推进一格，决定这一夜有几个夜客 ----------
   var MOON_PHASES = [
-    { key: 'new',  name: '新月',   short: '新', foes: [2],       dmgMul: 1.25, gate: 72, extra: 3, orb: 0.16, orbColor: 0x46567e, orbGlow: 0.08 },
-    { key: 'wax',  name: '上弦月', short: '弦', foes: [0, 2],    dmgMul: 1.0,  gate: 68, extra: 2, orb: 0.5,  orbColor: 0xb2c4dc, orbGlow: 0.3 },
-    { key: 'full', name: '满月',   short: '满', foes: [0, 1, 2], dmgMul: 1.0,  gate: 60, extra: 4, orb: 1.15, orbColor: 0xf6f2de, orbGlow: 0.5 },
-    { key: 'wan',  name: '残月',   short: '残', foes: [1, 2],    dmgMul: 1.1,  gate: 64, extra: 2, orb: 0.68, orbColor: 0xd2dae6, orbGlow: 0.34 }
+    { key: 'new',  name: '新月',   short: '新', foes: [2],       pack: 3, dmgMul: 1.25, gate: 72, extra: 3, orb: 0.16, orbColor: 0x46567e, orbGlow: 0.08 },
+    { key: 'wax',  name: '上弦月', short: '弦', foes: [0, 2],    pack: 2, dmgMul: 1.0,  gate: 68, extra: 2, orb: 0.5,  orbColor: 0xb2c4dc, orbGlow: 0.3 },
+    { key: 'full', name: '满月',   short: '满', foes: [0, 1, 2], pack: 2, dmgMul: 1.0,  gate: 60, extra: 4, orb: 1.15, orbColor: 0xf6f2de, orbGlow: 0.5 },
+    { key: 'wan',  name: '残月',   short: '残', foes: [1, 2],    pack: 3, dmgMul: 1.1,  gate: 64, extra: 2, orb: 0.68, orbColor: 0xd2dae6, orbGlow: 0.34 }
   ];
 
   function currentMoonPhase() {
     if (state.changmingEnd) return MOON_PHASES[2];
     var i = ((state.moonIdx || 0) % MOON_PHASES.length + MOON_PHASES.length) % MOON_PHASES.length;
     return MOON_PHASES[i];
+  }
+
+  // 每一相有几只夜客 = 妖种数 × pack（同种成群结伴而来）
+  function phaseFoeCount(ph) {
+    return ((ph && ph.foes) || []).length * ((ph && ph.pack) || 1);
   }
 
   // ---------- 夜行妖：只在夜色里现身的三种「夜客」 ----------
@@ -6825,10 +6830,13 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     m.add(o);
   }
 
-  function buildNightFoe(def, idx) {
+  function buildNightFoe(def, idx, sx, sz, thin) {
     var g = new THREE.Group();
     var body = null;
     var auraHex = def.style === 'owl' ? 0xffc46a : 0x8fd6ff;
+    var homeX = (sx === undefined || sx === null) ? def.bx : sx;
+    var homeZ = (sz === undefined || sz === null) ? def.bz : sz;
+    var thinK = thin === undefined ? 1 : thin;
 
     if (def.style === 'moth') {
       body = new THREE.Mesh(
@@ -6925,12 +6933,15 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     g.add(moonRing);
 
     g.scale.setScalar(1.5);
-    g.position.set(def.bx, GROUND, def.bz);
+    g.position.set(homeX, GROUND, homeZ);
     world.add(g);
 
     nightFoes.push({
-      obj: g, def: def, x: def.bx, z: def.bz, body: body, ring: ring,
-      hp: def.hpMax, alive: true, cd: 1.0 + idx * 0.5, flashT: 0, dieT: 0, chase: false, bar: makeBar(def.name)
+      obj: g, def: def, x: homeX, z: homeZ, homeX: homeX, homeZ: homeZ, body: body, ring: ring,
+      hp: Math.max(24, Math.round(def.hpMax * thinK)), hpMax: Math.max(24, Math.round(def.hpMax * thinK)),
+      dmgK: thinK < 1 ? 0.52 : 1,
+      spK: thinK < 1 ? 0.82 : 1,
+      alive: true, cd: thinK < 1 ? 3.8 + idx * 0.4 : 1.2 + idx * 0.3, flashT: 0, dieT: 0, chase: false, bar: makeBar(def.name)
     });
   }
 
@@ -6971,10 +6982,21 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     var ph = currentMoonPhase();
     moonNote(ph.key, ph.name);
     state.moonNight = (state.moonNight || 0) + 1;
-    for (var k = 0; k < ph.foes.length; k++) buildNightFoe(NIGHT_DEFS[ph.foes[k]], k);
+    // 同种夜客成群：每种按 pack 只落地，围绕原巢穴散开，避免全叠在一个点
+    var pack = ph.pack || 1;
+    var spawnIdx = 0;
+    for (var k = 0; k < ph.foes.length; k++) {
+      var dfoe = NIGHT_DEFS[ph.foes[k]];
+      for (var c = 0; c < pack; c++) {
+        var ang = (c / pack) * Math.PI * 2 + k * 1.05;
+        var rad = c === 0 ? 0 : 78 + (c - 1) * 24;
+        buildNightFoe(dfoe, spawnIdx, dfoe.bx + Math.cos(ang) * rad, dfoe.bz + Math.sin(ang) * rad, c === 0 ? 1 : 0.68);
+        spawnIdx++;
+      }
+    }
     var first = !state.nightSeen;
     state.nightSeen = true;
-    showToastLong((first ? '今夜' + ph.name : '今夜又逢' + ph.name) + ' · 夜客 ' + ph.foes.length + ' 只（' + nightFoeNames(ph) + '）· 月华门槛 ' + ph.gate);
+    showToastLong((first ? '今夜' + ph.name : '今夜又逢' + ph.name) + ' · 夜客 ' + phaseFoeCount(ph) + ' 只（' + nightFoeNames(ph) + '）· 月华门槛 ' + ph.gate);
     spawnRing(player.position.x, player.position.z, 8, 150, 0x8fd6ff, 0.55);
     saveGame();
   }
@@ -7047,26 +7069,29 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
 
       var dx = px - f.x, dz = pz - f.z;
       var d = Math.hypot(dx, dz) || 1;
-      if (!f.chase && d < 520) f.chase = true;
+      var chaseNear = (f.dmgK || 1) < 1 ? 430 : 520;
+      if (!f.chase && d < chaseNear) f.chase = true;
       else if (f.chase && d > 660) f.chase = false;
+      var spK = f.spK || 1;
 
       if (f.chase) {
-        // 三只各占一个方位，围而不叠
-        var slotR = 56 + i * 20;
-        var tx2 = px - Math.cos(i * 2.09 + 0.5) * slotR;
-        var tz2 = pz - Math.sin(i * 2.09 + 0.5) * slotR;
+        // 每三只一圈围上来，成群时按环排布，围而不叠
+        var slotR = 52 + (i % 3) * 16 + Math.floor(i / 3) * 26;
+        var sa = i * 2.09 + Math.floor(i / 3) * 0.7 + 0.5;
+        var tx2 = px - Math.cos(sa) * slotR;
+        var tz2 = pz - Math.sin(sa) * slotR;
         var ox2 = tx2 - f.x, oz2 = tz2 - f.z;
         var od2 = Math.hypot(ox2, oz2);
         if (od2 > 5) {
-          f.x += ox2 / od2 * f.def.sp * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
-          f.z += oz2 / od2 * f.def.sp * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
+          f.x += ox2 / od2 * f.def.sp * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
+          f.z += oz2 / od2 * f.def.sp * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
         }
       } else {
-        var hx = f.def.bx - f.x, hz = f.def.bz - f.z;
+        var hx = (f.homeX === undefined ? f.def.bx : f.homeX) - f.x, hz = (f.homeZ === undefined ? f.def.bz : f.homeZ) - f.z;
         var hl = Math.hypot(hx, hz);
         if (hl > 4) {
-          f.x += hx / hl * f.def.sp * 0.42 * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
-          f.z += hz / hl * f.def.sp * 0.42 * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
+          f.x += hx / hl * f.def.sp * 0.42 * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
+          f.z += hz / hl * f.def.sp * 0.42 * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
         }
       }
 
@@ -7096,9 +7121,9 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       }
 
       f.cd -= dt;
-      if (d < 62 + i * 20 && f.cd <= 0) {
-        f.cd = 2.3;
-        var fdmg = Math.round(f.def.dmg * currentMoonPhase().dmgMul);
+      if (d < 58 + (i % 3) * 12 && f.cd <= 0) {
+        f.cd = (f.dmgK || 1) < 1 ? 4.0 : 2.3;
+        var fdmg = Math.round(f.def.dmg * currentMoonPhase().dmgMul * (f.dmgK || 1));
         hurtPlayer(fdmg, f.def.name);
         spawnRing(f.x, f.z, 3, 32, 0x9bd8ff, 0.35);
       }
@@ -11430,7 +11455,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
       TT(ph.name, x + GW / 2, y + 340, 31, isNow ? pal.ttl : 'rgba(226,238,248,.9)', 500, 'center', 3);
       TT(ph.key.toUpperCase() + ' · 月 华 门 槛 ' + ph.gate + ' · 夜 客 伤 害 ×' + ph.dmgMul.toFixed(2),
          x + GW / 2, y + 376, 15, pal.sub, 400, 'center', 1);
-      TT('夜 客 · ' + nightFoeNames(ph) + '（' + ph.foes.length + ' 只）',
+      TT('夜 客 · ' + nightFoeNames(ph) + '（' + phaseFoeCount(ph) + ' 只）',
          x + GW / 2, y + 424, 17, isNow ? 'rgba(255,224,168,.92)' : 'rgba(190,212,230,.72)', 400, 'center', 1);
       var adv = MOON_ADV[ph.key];
       if (adv) {
@@ -11475,7 +11500,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
 
     var footY = GY + 2 * GH + GAP + 46;
     var foeSum = 0;
-    for (var fq = 0; fq < 4; fq++) foeSum += (MOON_PHASES[fq].foes || []).length;
+    for (var fq = 0; fq < 4; fq++) foeSum += phaseFoeCount(MOON_PHASES[fq]);
     TT('月相志 · 已录 ' + moonRecorded() + ' / ' + MOONODEX.length + '　·　四相夜客共 ' + foeSum + ' 只　·　长明与月蚀另录两册',
        W / 2, footY, 16, pal.sub, 500, 'center', 2);
     g.strokeStyle = pal.line; g.lineWidth = 1;
@@ -13458,7 +13483,7 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     moonItem.innerHTML =
       '<div class="ph">月</div>' +
       '<div class="txt"><div class="nm">月相历 · ' + mph2.name + '</div>' +
-      '<div class="ds">每过一夜推进一格：新月 1 只夜客（最凶 +25% 伤害 · 月华不显，门槛 72 · 清尽再 +3）、上弦 2 只（门槛 68 · +2）、满月 3 只（门槛 60 · +4）、残月 2 只（门槛 64 · +2）。月神树顶的月亮会跟着明暗。已历 ' + (state.moonNight || 0) + ' 夜。</div></div>';
+      '<div class="ds">每过一夜推进一格：新月 3 只夜客（最凶 +25% 伤害 · 月华不显，门槛 72 · 清尽再 +3）、上弦 4 只（门槛 68 · +2）、满月 6 只（门槛 60 · +4）、残月 6 只（门槛 64 · +2）。同种成群结伴而来。月神树顶的月亮会跟着明暗。已历 ' + (state.moonNight || 0) + ' 夜。</div></div>';
     grid.appendChild(moonItem);
 
     var shItem = document.createElement('div');
