@@ -5047,7 +5047,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.310';
+  var GAME_VER = 'v1.311';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -7060,6 +7060,46 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     dayWaveBarNum.textContent = Math.ceil(m) + 's';
   }
 
+  // 游魂低语：靠近到一百六十步内，偶尔飘一句不成句的话，配一声极轻的底音
+  var WHISPERS = [
+    '…回头…看一眼…',
+    '水里还有一个人没上来…',
+    '别走那么快，会掉队的…',
+    '月亮记得你的名字…',
+    '岛上少了一个影子…',
+    '雾散之前，别停下…'
+  ];
+  var whisperEl = null, whisperTimer = null, whisperNext = 0;
+  function ghostWhisper(txt) {
+    if (!whisperEl) {
+      whisperEl = document.createElement('div');
+      whisperEl.id = 'ghostWhisper';
+      whisperEl.style.cssText = 'position:fixed;left:0;right:0;bottom:16%;text-align:center;pointer-events:none;'
+        + 'z-index:60;font-size:13px;letter-spacing:2px;color:rgba(214,236,246,.74);'
+        + 'text-shadow:0 0 10px rgba(120,190,230,.55);opacity:0;transition:opacity .55s';
+      document.body.appendChild(whisperEl);
+    }
+    whisperEl.textContent = txt;
+    whisperEl.style.opacity = '1';
+    clearTimeout(whisperTimer);
+    whisperTimer = setTimeout(function () { whisperEl.style.opacity = '0'; }, 2700);
+  }
+  function tickGhostWhisper(dt) {
+    whisperNext -= dt;
+    if (whisperNext > 0) return;
+    var px = player.position.x, pz = player.position.z, best = null, bd = 160;
+    for (var i = 0; i < nightFoes.length; i++) {
+      var f = nightFoes[i];
+      if (!f.day || !f.alive) continue;
+      var d2 = Math.hypot(px - f.x, pz - f.z);
+      if (d2 < bd) { bd = d2; best = f; }
+    }
+    if (!best) { whisperNext = 0.6; return; }
+    whisperNext = 6 + Math.random() * 4;
+    ghostWhisper(WHISPERS[Math.floor(Math.random() * WHISPERS.length)]);
+    tone(188 + Math.floor(Math.random() * 3) * 14, 0.55, 'sine', 0.026);
+  }
+
   // 两波俱清后的奖励：雾退六息，看得更远
   var fogClearT = 0;
   var FOG_CLEAR_DUR = 6;
@@ -7103,6 +7143,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     for (var i = 0; i < nightFoes.length; i++) disposeNightFoe(nightFoes[i]);
     nightFoes.length = 0;
     updateDayWaveBar(null);
+    if (whisperEl) whisperEl.style.opacity = '0';
   }
 
   function nightFoeNames(ph) {
@@ -7228,7 +7269,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     } else if (!night && nightState.on) {
       endNight();
     }
-    if (!nightState.on) { ensureDayGhosts(); tickDayWaveTimer(); }
+    if (!nightState.on) { ensureDayGhosts(); tickDayWaveTimer(); tickGhostWhisper(dt); }
 
     var px = player.position.x, pz = player.position.z;
     for (var i = 0; i < nightFoes.length; i++) {
