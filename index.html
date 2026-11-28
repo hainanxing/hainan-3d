@@ -5037,7 +5037,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.300';
+  var GAME_VER = 'v1.301';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -6936,13 +6936,54 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     g.position.set(homeX, GROUND, homeZ);
     world.add(g);
 
-    nightFoes.push({
+    var nf = {
       obj: g, def: def, x: homeX, z: homeZ, homeX: homeX, homeZ: homeZ, body: body, ring: ring,
       hp: Math.max(24, Math.round(def.hpMax * thinK)), hpMax: Math.max(24, Math.round(def.hpMax * thinK)),
       dmgK: thinK < 1 ? 0.52 : 1,
       spK: thinK < 1 ? 0.82 : 1,
+      day: false, wanderT: 0, wx: homeX, wz: homeZ,
       alive: true, cd: thinK < 1 ? 3.8 + idx * 0.4 : 1.2 + idx * 0.3, flashT: 0, dieT: 0, chase: false, bar: makeBar(def.name)
-    });
+    };
+    nightFoes.push(nf);
+    return nf;
+  }
+
+  // ---------- 白昼游魂：日头下也不散，只在岛上慢巡 ----------
+  var DAY_SPOTS = [
+    { x: -430, z: -430, k: 0 },
+    { x: 470, z: 300, k: 2 },
+    { x: -360, z: 520, k: 1 }
+  ];
+  var dayGhostAt = 0;
+
+  function aliveDayGhosts() {
+    var n = 0;
+    for (var i = 0; i < nightFoes.length; i++) if (nightFoes[i].day && nightFoes[i].alive) n++;
+    return n;
+  }
+
+  function spawnDayGhosts() {
+    for (var i = 0; i < DAY_SPOTS.length; i++) {
+      var sp = DAY_SPOTS[i];
+      var f = buildNightFoe(NIGHT_DEFS[sp.k], i, sp.x, sp.z, 0.72);
+      f.day = true;
+      f.dmgK = 0.45;
+      f.spK = 0.6;
+      f.cd = 3.0 + i * 0.6;
+      if (f.obj) f.obj.scale.setScalar(1.28);
+    }
+    dayGhostAt = state.t;
+    if (!state.dayGhostSeen) {
+      state.dayGhostSeen = true;
+      showToastLong('天光之下 · 三只游魂在岛上巡游（可斩 · 刃心 +1 气血 +8）');
+    }
+  }
+
+  function ensureDayGhosts() {
+    if (nightState.on) return;
+    if (aliveDayGhosts() > 0) return;
+    if (dayGhostAt && state.t - dayGhostAt < 40) return;   // 全灭后歇 40 秒再聚
+    spawnDayGhosts();
   }
 
   function disposeNightFoe(f) {
@@ -7012,21 +7053,31 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   function killNightFoe(f) {
+    var isDay = !!f.day;
     f.alive = false;
     f.hp = 0;
     f.dieT = 0.7;
     codexKill(f.def.name);
-    state.nightKill = (state.nightKill || 0) + 1;
+    if (!isDay) state.nightKill = (state.nightKill || 0) + 1;
     state.blade = Math.min(72, state.blade + 1);
-    state.hp = Math.min(state.hpMax, state.hp + 14);
-    state.power = Math.min(100, state.power + 18);
-    if (currentMoonPhase().key === 'full') addShard(1, f.def.name);
-    spawnFloater(f.x, GROUND + 104, f.z, '夜行妖溃散', '#bfe6ff');
-    spawnRing(f.x, f.z, 5, 78, 0x8fd6ff, 0.6);
+    state.hp = Math.min(state.hpMax, state.hp + (isDay ? 8 : 14));
+    state.power = Math.min(100, state.power + (isDay ? 12 : 18));
+    if (!isDay && currentMoonPhase().key === 'full') addShard(1, f.def.name);
+    spawnFloater(f.x, GROUND + 104, f.z, isDay ? '游魂散尽' : '夜行妖溃散', isDay ? '#ffe6b0' : '#bfe6ff');
+    spawnRing(f.x, f.z, 5, 78, isDay ? 0xffe0a0 : 0x8fd6ff, 0.6);
     sfxCore();
 
-    var leftN = 0;
-    for (var i = 0; i < nightFoes.length; i++) if (nightFoes[i].alive) leftN++;
+    var leftN = 0, leftDay = 0;
+    for (var i = 0; i < nightFoes.length; i++) {
+      if (!nightFoes[i].alive) continue;
+      if (nightFoes[i].day) leftDay++; else leftN++;
+    }
+    if (isDay) {
+      showToast('「' + f.def.name + '」游魂散尽 · 刃心 +1 · 气血 +8 · 岛上还有 ' + leftDay + ' 只游魂');
+      saveGame();
+      updateBladeTip();
+      return;
+    }
     if (leftN === 0) {
       nightState.cleared = true;
       state.nightClear = (state.nightClear || 0) + 1;
@@ -7048,9 +7099,8 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       startNight();
     } else if (!night && nightState.on) {
       endNight();
-      return;
     }
-    if (!nightState.on) return;
+    if (!nightState.on) ensureDayGhosts();
 
     var px = player.position.x, pz = player.position.z;
     for (var i = 0; i < nightFoes.length; i++) {
@@ -7069,10 +7119,18 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
 
       var dx = px - f.x, dz = pz - f.z;
       var d = Math.hypot(dx, dz) || 1;
-      var chaseNear = (f.dmgK || 1) < 1 ? 430 : 520;
+      var chaseNear = f.day ? 300 : ((f.dmgK || 1) < 1 ? 430 : 520);
       if (!f.chase && d < chaseNear) f.chase = true;
-      else if (f.chase && d > 660) f.chase = false;
+      else if (f.chase && d > (f.day ? 400 : 660)) f.chase = false;
       var spK = f.spK || 1;
+      if (f.day) {
+        f.wanderT -= dt;
+        if (f.wanderT <= 0) {
+          f.wanderT = 4 + Math.random() * 4;
+          f.wx = f.homeX + (Math.random() - 0.5) * 170;
+          f.wz = f.homeZ + (Math.random() - 0.5) * 170;
+        }
+      }
 
       if (f.chase) {
         // 每三只一圈围上来，成群时按环排布，围而不叠
@@ -7087,11 +7145,12 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
           f.z += oz2 / od2 * f.def.sp * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
         }
       } else {
-        var hx = (f.homeX === undefined ? f.def.bx : f.homeX) - f.x, hz = (f.homeZ === undefined ? f.def.bz : f.homeZ) - f.z;
+        var hx = (f.day ? f.wx : (f.homeX === undefined ? f.def.bx : f.homeX)) - f.x;
+        var hz = (f.day ? f.wz : (f.homeZ === undefined ? f.def.bz : f.homeZ)) - f.z;
         var hl = Math.hypot(hx, hz);
         if (hl > 4) {
-          f.x += hx / hl * f.def.sp * 0.42 * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
-          f.z += hz / hl * f.def.sp * 0.42 * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
+          f.x += hx / hl * f.def.sp * (f.day ? 0.3 : 0.42) * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
+          f.z += hz / hl * f.def.sp * (f.day ? 0.3 : 0.42) * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
         }
       }
 
@@ -11506,9 +11565,12 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
     g.strokeStyle = pal.line; g.lineWidth = 1;
     g.beginPath(); g.moveTo(220, footY + 34); g.lineTo(W - 220, footY + 34); g.stroke();
     TT('山 海 不 言 ， 录 者 代 其 言', W / 2, footY + 84, 24, pal.ttl, 500, 'center', 3);
-    var aliveAll = 0;
-    for (var aa = 0; aa < nightFoes.length; aa++) if (nightFoes[aa].alive) aliveAll++;
-    TT((aliveAll ? '今夜岛上 ' + aliveAll + ' 只夜客　·　' : '天光未落 · 夜客未出　·　') +
+    var aliveAll = 0, aliveGhost = 0;
+    for (var aa = 0; aa < nightFoes.length; aa++) {
+      if (!nightFoes[aa].alive) continue;
+      if (nightFoes[aa].day) aliveGhost++; else aliveAll++;
+    }
+    TT((aliveAll ? '今夜岛上 ' + aliveAll + ' 只夜客　·　' : (aliveGhost ? '白昼游魂 ' + aliveGhost + ' 只巡岛　·　' : '天光未落 · 夜客未出　·　')) +
        '点有金点的月相格　可看那一晚的留影', W / 2, H - 108, 13, 'rgba(255,224,168,.5)', 400, 'center', 1);
     TT('南海仙岛 · 鹿回头 · 3D 探索版 · 月相历 1440 × 1800', W / 2, H - 86, 13,
        'rgba(190,212,230,.42)', 400, 'center', 1);
@@ -13760,10 +13822,10 @@ var TERRACE = { x: -260, z: -90, y: 71, r: 118 };
   var MOONODEX = [
     { k: 'new', name: '新月', color: '#a89bff',
       svg: '<polygon points="20,5 26,10 30,17 30,25 26,31 20,35 16,34 22,29 25,23 25,17 21,10 16,6" fill="%C%"/><circle cx="33" cy="11" r="1.6" fill="%C%" opacity=".85"/>',
-      note: '无月之夜，夜行妖最凶，月华门槛最高。', plan: '刃气门槛 72 最高，宜先蓄刃、清昼间灵核；夜里仅两只夜客，用来练角刃与连击正好。' },
+      note: '无月之夜，夜行妖最凶，月华门槛最高。', plan: '刃气门槛 72 最高，宜先蓄刃、清昼间灵核；今夜三只礁影结伴而来，用来练角刃与连击正好。' },
     { k: 'wax', name: '上弦月', color: '#9fd8ff',
       svg: '<path d="M20 5 A15 15 0 0 1 20 35 Z" fill="%C%"/><circle cx="26" cy="14" r="1.3" fill="%C%"/>',
-      note: '半月斜挂，夜里有两只夜客。', plan: '门槛 68、攻守均衡，宜跑地标收信物、顺手打两只夜客。' },
+      note: '半月斜挂，夜里四只夜客。', plan: '门槛 68、攻守均衡，宜跑地标收信物、顺手清两群夜客。' },
     { k: 'full', name: '满月', color: '#fff4d6',
       svg: '<circle cx="20" cy="20" r="14.5" fill="%C%"/><circle cx="15" cy="16" r="2.6" fill="%C%" opacity=".45"/><circle cx="24" cy="24" r="2" fill="%C%" opacity=".4"/><circle cx="25" cy="14" r="1.4" fill="%C%" opacity=".4"/>',
       note: '月满则夜行妖尽出，斩之可拾月华碎片。', plan: '门槛降到 60、护体最易起，夜行妖尽出——刷妖兽志与拾月华碎片都在这一夜。' },
