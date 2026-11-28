@@ -5037,7 +5037,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.307';
+  var GAME_VER = 'v1.308';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -7010,10 +7010,51 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     spawnDayGhosts(dayWave === 1 ? 2 : 1);
   }
 
+  // 二波倒计时细线：屏幕顶端一条，随剩余秒数收缩，最后 10 秒转红
+  var dayWaveBarEl = null, dayWaveBarFill = null, dayWaveBarNum = null;
+  function ensureDayWaveBar() {
+    if (dayWaveBarEl) return;
+    dayWaveBarEl = document.createElement('div');
+    dayWaveBarEl.id = 'dayWaveBar';
+    dayWaveBarEl.style.cssText = 'position:fixed;left:0;right:0;top:0;height:3px;z-index:70;'
+      + 'background:rgba(255,255,255,.06);pointer-events:none;display:none';
+    dayWaveBarFill = document.createElement('i');
+    dayWaveBarFill.style.cssText = 'display:block;height:100%;width:100%;'
+      + 'background:linear-gradient(90deg,#ffd26a,#fff2cf);box-shadow:0 0 8px rgba(255,200,110,.7);'
+      + 'transition:width .12s linear,background .3s';
+    dayWaveBarEl.appendChild(dayWaveBarFill);
+    dayWaveBarNum = document.createElement('span');
+    dayWaveBarNum.style.cssText = 'position:fixed;top:6px;right:10px;font-size:11px;letter-spacing:.5px;'
+      + 'color:#ffd9a0;text-shadow:0 1px 3px rgba(0,0,0,.6);pointer-events:none;z-index:70;display:none';
+    document.body.appendChild(dayWaveBarEl);
+    document.body.appendChild(dayWaveBarNum);
+  }
+  function updateDayWaveBar(left) {
+    ensureDayWaveBar();
+    if (left === null || left === undefined) {
+      dayWaveBarEl.style.display = 'none';
+      dayWaveBarNum.style.display = 'none';
+      return;
+    }
+    var m = Math.max(0, Math.min(60, left));
+    dayWaveBarEl.style.display = 'block';
+    dayWaveBarNum.style.display = 'block';
+    dayWaveBarFill.style.width = (m / 60 * 100).toFixed(1) + '%';
+    if (m <= 10) {
+      dayWaveBarFill.style.background = 'linear-gradient(90deg,#ff7a6a,#ffb199)';
+      dayWaveBarNum.style.color = '#ff9a8a';
+    } else {
+      dayWaveBarFill.style.background = 'linear-gradient(90deg,#ffd26a,#fff2cf)';
+      dayWaveBarNum.style.color = '#ffd9a0';
+    }
+    dayWaveBarNum.textContent = Math.ceil(m) + 's';
+  }
+
   // 第二波限时：60 秒内没清完，两魂遁入雾里，这轮白昼无片
   function tickDayWaveTimer() {
-    if (dayWave !== 2 || aliveDayGhosts() <= 0 || !dayWaveT0) return;
+    if (dayWave !== 2 || aliveDayGhosts() <= 0 || !dayWaveT0) { updateDayWaveBar(null); return; }
     var left = 60 - (state.t - dayWaveT0);
+    updateDayWaveBar(left);
     if (left <= 0) {
       clearNightFoes();
       dayWave = 0;
@@ -7046,6 +7087,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   function clearNightFoes() {
     for (var i = 0; i < nightFoes.length; i++) disposeNightFoe(nightFoes[i]);
     nightFoes.length = 0;
+    updateDayWaveBar(null);
   }
 
   function nightFoeNames(ph) {
