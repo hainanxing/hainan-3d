@@ -5037,7 +5037,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.304';
+  var GAME_VER = 'v1.305';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -7019,6 +7019,10 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   function startNight() {
     nightState.on = true;
     nightState.cleared = false;
+    // 白昼未清的游魂会去报信：留几只，今夜就多几只夜客（最多 +2）
+    var leak = 0;
+    for (var li = 0; li < nightFoes.length; li++) if (nightFoes[li].day && nightFoes[li].alive) leak++;
+    var leakExtra = Math.min(2, leak);
     clearNightFoes();
     if (state.changmingEnd) {
       nightState.cleared = true;
@@ -7042,9 +7046,19 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
         spawnIdx++;
       }
     }
+    // 报信来的追兵：同相第一妖种，比成群那只更薄一点
+    if (leakExtra > 0) {
+      var ldef = NIGHT_DEFS[ph.foes[0]];
+      for (var lc = 0; lc < leakExtra; lc++) {
+        var lang = Math.PI * 2 * lc / leakExtra + 1.2;
+        buildNightFoe(ldef, spawnIdx, ldef.bx + Math.cos(lang) * 136, ldef.bz + Math.sin(lang) * 136, 0.85);
+        spawnIdx++;
+      }
+    }
     var first = !state.nightSeen;
     state.nightSeen = true;
-    showToastLong((first ? '今夜' + ph.name : '今夜又逢' + ph.name) + ' · 夜客 ' + phaseFoeCount(ph) + ' 只（' + nightFoeNames(ph) + '）· 月华门槛 ' + ph.gate);
+    var totalN = phaseFoeCount(ph) + leakExtra;
+    showToastLong((first ? '今夜' + ph.name : '今夜又逢' + ph.name) + ' · 夜客 ' + totalN + ' 只（' + nightFoeNames(ph) + (leakExtra ? ' · 昼魂报信 +' + leakExtra : '') + '）· 月华门槛 ' + ph.gate);
     spawnRing(player.position.x, player.position.z, 8, 150, 0x8fd6ff, 0.55);
     saveGame();
   }
