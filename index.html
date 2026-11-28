@@ -5037,7 +5037,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.308';
+  var GAME_VER = 'v1.309';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -7233,8 +7233,9 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       var d = Math.hypot(dx, dz) || 1;
       var chaseNear = f.day ? 300 : ((f.dmgK || 1) < 1 ? 430 : 520);
       if (!f.chase && d < chaseNear) f.chase = true;
-      else if (f.chase && d > (f.day ? 400 : 660)) f.chase = false;
+      else if (f.chase && d > (f.day ? 400 : 660)) { f.chase = false; f.chaseT = 0; }
       var spK = f.spK || 1;
+      if (f.dashT && f.dashT > 0) f.dashT -= dt;
       if (f.day) {
         f.wanderT -= dt;
         if (f.wanderT <= 0) {
@@ -7245,6 +7246,27 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
       }
 
       if (f.chase) {
+        f.chaseT = (f.chaseT || 0) + dt;
+        // 夜客不守旧窝：追满九秒就换一处，绕到另一侧再来
+        if (!f.day && f.chaseT > 9) {
+          f.chaseT = 0;
+          f.chase = false;
+          var awayA = Math.atan2(f.z - pz, f.x - px) + (Math.random() - 0.5) * 1.6;
+          var awayR = 300 + Math.random() * 140;
+          var nx = f.x + Math.cos(awayA) * awayR;
+          var nz = f.z + Math.sin(awayA) * awayR;
+          var nr = Math.hypot(nx, nz);
+          if (nr > ISLE_R * 0.74) { nx *= ISLE_R * 0.74 / nr; nz *= ISLE_R * 0.74 / nr; }
+          f.homeX = nx;
+          f.homeZ = nz;
+          f.dashT = 1.6;
+          spawnRing(f.x, f.z, 2, 26, 0x9bd8ff, 0.32);
+          if (!state.foeRelocSeen) {
+            state.foeRelocSeen = true;
+            showToastLong('夜客不守旧窝 · 追急了它会绕到别处再围上来');
+          }
+        }
+        var dashK = (f.dashT && f.dashT > 0) ? 1.7 : 1;
         // 每三只一圈围上来，成群时按环排布，围而不叠
         var slotR = 52 + (i % 3) * 16 + Math.floor(i / 3) * 26;
         var sa = i * 2.09 + Math.floor(i / 3) * 0.7 + 0.5;
@@ -7253,16 +7275,18 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
         var ox2 = tx2 - f.x, oz2 = tz2 - f.z;
         var od2 = Math.hypot(ox2, oz2);
         if (od2 > 5) {
-          f.x += ox2 / od2 * f.def.sp * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
-          f.z += oz2 / od2 * f.def.sp * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
+          var spd2 = f.def.sp * spK * dt * dashK * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
+          f.x += ox2 / od2 * spd2;
+          f.z += oz2 / od2 * spd2;
         }
       } else {
         var hx = (f.day ? f.wx : (f.homeX === undefined ? f.def.bx : f.homeX)) - f.x;
         var hz = (f.day ? f.wz : (f.homeZ === undefined ? f.def.bz : f.homeZ)) - f.z;
         var hl = Math.hypot(hx, hz);
         if (hl > 4) {
-          f.x += hx / hl * f.def.sp * (f.day ? 0.3 : 0.42) * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
-          f.z += hz / hl * f.def.sp * (f.day ? 0.3 : 0.42) * spK * dt * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
+          var spd3 = f.def.sp * (f.day ? 0.3 : 0.42) * spK * dt * ((f.dashT && f.dashT > 0) ? 1.7 : 1) * (f.slowUntil && state.t < f.slowUntil ? 0.55 : 1);
+          f.x += hx / hl * spd3;
+          f.z += hz / hl * spd3;
         }
       }
 
