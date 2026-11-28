@@ -5037,7 +5037,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   }
 
   // ---------- 状态 ----------
-  var GAME_VER = 'v1.301';
+  var GAME_VER = 'v1.302';
   var state = { questLock: -1, combo: 0, comboT: 0, _comboOn: false, _comboN: -1, hp: 100, hpMax: 100, power: 100, relics: 0, cores: 0, blade: 34, heart: false, trials: 0, eclipseWins: 0, guardShown: false, swift: false, trialLimit: 0, isleAllLog: null, isleAllLogPrev: null, isleAllLastSec: '', isleAllLastSecPrev: '', isleCardLine: '', isleTut: 0, isleTutSkip: 0, trialLog: [], trialT0: 0, trialN: 0, trialEclipse: false, nightKill: 0, nightClear: 0, nightSeen: false, moonIdx: 0, moonNight: 0, shard: 0, changming: false, changmingEnd: false, changmingWin: 0, finalCue: 0, patrolOn: false, patrolIdx: 0, patrolDone: false, moonGuard: 0, moonGuardCd: 0, mileWardT: 0, guardCast: 0, moonCallCd: 0, islandLord: false, onTerrace: false, terraceBuffT: 0, terraceTick: 0, terraceTrial: false, terraceTrialT: 0, terraceWave: 0, terraceWins: 0, endless: false, endlessWave: 0, endlessT: 0, endlessBest: 0, muted: false, questStep: 0, questT: 0, lumenBond: false, codexKills: {}, codexGift: 0, lumenBlade: false, moonSeen: {}, moonForm: false, codexAll: false, pY: 31, achT: 0, sealsSeen: {}, paused: false, ended: false, flash: 0, atkCd: 0, walkAmt: 0, walkPhase: 0, atkAnim: 0, hitStop: 0, t: 0 };
   var keys = Object.create(null);
 
@@ -6952,7 +6952,9 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
   var DAY_SPOTS = [
     { x: -430, z: -430, k: 0 },
     { x: 470, z: 300, k: 2 },
-    { x: -360, z: 520, k: 1 }
+    { x: -360, z: 520, k: 1 },
+    { x: 620, z: -180, k: 1 },
+    { x: -160, z: 640, k: 0 }
   ];
   var dayGhostAt = 0;
 
@@ -6975,7 +6977,7 @@ console.warn( 'Scripts "build/three.js" and "build/three.min.js" are deprecated 
     dayGhostAt = state.t;
     if (!state.dayGhostSeen) {
       state.dayGhostSeen = true;
-      showToastLong('天光之下 · 三只游魂在岛上巡游（可斩 · 刃心 +1 气血 +8）');
+      showToastLong('天光之下 · 五只游魂在岛上巡游（可斩 · 刃心 +1 气血 +8）');
     }
   }
 
